@@ -1,8 +1,19 @@
 diff --git a/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs b/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
-index d4b7df8..061d80a 100644
+index d4b7df8..389f126 100644
 --- a/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
-@@ -127,7 +127,7 @@ public abstract class AbsDeckPickerTrayDisplay : MonoBehaviour
+@@ -5,8 +5,9 @@ using Hearthstone.DataModels;
+ using Hearthstone.UI;
+ using PegasusShared;
+ using UnityEngine;
++using Accessibility;
+ 
+-public abstract class AbsDeckPickerTrayDisplay : MonoBehaviour
++public abstract class AbsDeckPickerTrayDisplay : MonoBehaviour, AccessibleScreen
+ {
+ 	public delegate void DeckTrayLoaded();
+ 
+@@ -127,7 +128,7 @@ public abstract class AbsDeckPickerTrayDisplay : MonoBehaviour
  
  	protected SlidingTray m_slidingTray;
  
@@ -11,6 +22,140 @@ index d4b7df8..061d80a 100644
  
  	private AudioSource m_lastPickLine;
  
+@@ -396,9 +397,11 @@ public abstract class AbsDeckPickerTrayDisplay : MonoBehaviour
+ 				SceneMgr.Get().SetNextMode(SceneMgr.Get().GetPrevMode());
+ 			}
+ 		}
++
++		ReadHeroSelectionScreen();
+ 	}
+ 
+-	protected virtual void InitForMode(SceneMgr.Mode mode)
++    protected virtual void InitForMode(SceneMgr.Mode mode)
+ 	{
+ 		switch (mode)
+ 		{
+@@ -592,10 +595,12 @@ public abstract class AbsDeckPickerTrayDisplay : MonoBehaviour
+ 				SoundManager.Get().LoadAndPlay(button.HeroPickerSelectedPrefab, button.gameObject, 1f, OnLastPickLineLoaded);
+ 			}
+ 			SetPlayButtonEnabled(flag);
+-		}
+-	}
+ 
+-	protected virtual void UpdateHeroInfo(HeroPickerButton button)
++            OnChosenHero();
++        }
++    }
++
++    protected virtual void UpdateHeroInfo(HeroPickerButton button)
+ 	{
+ 	}
+ 
+@@ -1662,4 +1667,104 @@ public abstract class AbsDeckPickerTrayDisplay : MonoBehaviour
+ 	{
+ 		StartCoroutine(LoadHeroButtons(buttonsToDisplay));
+ 	}
++
++	#region Accessibility
++
++	private enum AccessibleState { LOADING, CHOOSING_HERO, HERO_CHOSEN };
++
++	private AccessibleState m_curAccessibleState;
++	private AccessibleMenu m_accessibleHeroes;
++
++    private void ReadHeroSelectionScreen()
++    {
++		if (!SupportedAdventure())
++        {
++			return;
++        }
++
++		m_curAccessibleState = AccessibleState.CHOOSING_HERO;
++
++		AccessibilityMgr.SetScreen(this);
++
++		//m_accessibleHeroes = new AccessibleMenu("Choose an adventurer", () => m_backButton.TriggerRelease());
++		m_accessibleHeroes = new AccessibleMenu("Choose an adventurer", () => AccessibilityUtils.GoBackToHub());
++
++		var numSupportedBoHHeroes = 1; // Only Jaina is supported for now -> Remember to release according to Blizzard's order
++
++		//foreach (var hb in m_heroButtons)
++		for (var i = 0; i < 1; i++)
++        {
++			var hb = m_heroButtons[i];
++			var heroName = hb.GetEntityDef()?.GetName();
++
++			m_accessibleHeroes.AddOption(hb.GetEntityDef()?.GetName(), () => ChooseHero(hb));
++        }
++
++		m_accessibleHeroes.StartReading();
++    }
++
++	private void OnChosenHero()
++    {
++		if (!SupportedAdventure())
++        {
++			return;
++        }
++
++        m_curAccessibleState = AccessibleState.HERO_CHOSEN;
++        AccessibilityMgr.Output(AccessibleSpeech.PRESS_ENTER_TO_START);
++    }
++
++    private bool SupportedAdventure()
++    {
++		var selectedAdventure = AdventureConfig.Get().SelectedAdventure;
++
++		return selectedAdventure == AdventureDbId.BOH;
++    }
++
++    private void ChooseHero(HeroPickerButton hb)
++    {
++		hb.TriggerRelease();
++    }
++
++    public void HandleInput()
++    {
++		if (m_curAccessibleState == AccessibleState.CHOOSING_HERO)
++        {
++            m_accessibleHeroes.HandleAccessibleInput();
++        }
++		else if (m_curAccessibleState == AccessibleState.HERO_CHOSEN)
++        {
++			if (AccessibleKey.CONFIRM.IsPressed())
++            {
++				m_playButton.TriggerRelease();
++            }
++			else if (AccessibleKey.BACK.IsPressed())
++            {
++				AccessibilityUtils.GoBackToHub();
++            }
++        }
++    }
++
++    public string GetHelp()
++    {
++		if (m_curAccessibleState == AccessibleState.CHOOSING_HERO)
++        {
++            return AccessibleSpeech.MENU_HELP(true);
++        }
++        else if (m_curAccessibleState == AccessibleState.HERO_CHOSEN)
++        {
++			return $"Press {AccessibleKey.CONFIRM} to start or {AccessibleKey.BACK} to go back to the main menu";
++        }
++		else
++        {
++			return ""; // Could say loading I guess. Need to test other adventures
++        }
++    }
++
++    public void OnGainedFocus()
++    {
++		AccessibilityMgr.Output("Choose Adventurer screen");
++    }
++
++	#endregion
+ }
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibilityConfig.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibilityConfig.cs
 new file mode 100644
 index 0000000..fbe9535
@@ -515,10 +660,10 @@ index 0000000..de54263
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibilityUtils.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibilityUtils.cs
 new file mode 100644
-index 0000000..e38ce95
+index 0000000..9415edf
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibilityUtils.cs
-@@ -0,0 +1,333 @@
+@@ -0,0 +1,339 @@
 +﻿using System;
 +using System.Text;
 +using System.Text.RegularExpressions;
@@ -584,7 +729,7 @@ index 0000000..e38ce95
 +                LogDebug($"CT: {text}");
 +                text = AccessibilityUtils.ExpandPlusSigns(text);
 +                LogDebug($"CT: {text}");
-+                text = AccessibilityUtils.ConvertNumbersToWrittenNumbers(text);
++                //text = AccessibilityUtils.ConvertNumbersToWrittenNumbers(text); // Bad idea as it breaks localization
 +                LogDebug($"CT: {text}");
 +
 +                if (text.Length == 0)
@@ -850,14 +995,20 @@ index 0000000..e38ce95
 +
 +            return sb.ToString();
 +        }
++
++        internal static void GoBackToHub()
++        {
++			Navigation.Clear();
++            SceneMgr.Get().SetNextMode(SceneMgr.Mode.HUB);
++        }
 +    }
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleAdventureScene.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleAdventureScene.cs
 new file mode 100644
-index 0000000..c9029ea
+index 0000000..055d860
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleAdventureScene.cs
-@@ -0,0 +1,269 @@
+@@ -0,0 +1,280 @@
 +﻿using Assets;
 +using System;
 +using System.Collections.Generic;
@@ -866,7 +1017,7 @@ index 0000000..c9029ea
 +{
 +    class AccessibleAdventureScene : AccessibleScreen
 +    {
-+        private enum State { LOADING, CHOOSING_ADVENTURE, CHOOSING_ADVENTURE_MODE, CHOOSING_DECK, CHOOSING_OPPONENT }; // Finding game is a loading state as well
++        private enum State { LOADING, CHOOSING_ADVENTURE, CHOOSING_ADVENTURE_MODE, CHOOSING_DECK, CHOOSING_OPPONENT, CHOOSING_ADVENTURER }; // Finding game is a loading state as well
 +
 +        private State m_curState = State.LOADING;
 +
@@ -904,14 +1055,18 @@ index 0000000..c9029ea
 +
 +        public void OnSubSceneLoaded(AdventureData.Adventuresubscene subscene)
 +        {
++            AccessibilityUtils.LogDebug($"OnSubSceneLoaded({subscene})");
++
 +            try
 +            {
 +                if (subscene == AdventureData.Adventuresubscene.CHOOSER)
 +                {
++                    AccessibilityMgr.SetScreen(this);
 +                    SetupAndReadChooseAdventureMenu();
 +                }
 +                else if (subscene == AdventureData.Adventuresubscene.PRACTICE)
 +                {
++                    AccessibilityMgr.SetScreen(this);
 +                    AccessibilityMgr.Output("Practice mode");
 +                }
 +            }
@@ -927,6 +1082,7 @@ index 0000000..c9029ea
 +            m_curMenu = new AccessibleMenu("Choose an adventure", OnGoBackToHub);
 +
 +            m_curMenu.AddOption("Practice", OnChoosePracticeAdventure);
++            m_curMenu.AddOption("Book of Heroes", OnChooseBookOfHeroesAdventure);
 +            m_curMenu.AddOption("Go back", OnGoBackToHub);
 +
 +            m_curMenu.StartReading();
@@ -955,8 +1111,14 @@ index 0000000..c9029ea
 +            }
 +        }
 +
++        private void OnChooseBookOfHeroesAdventure()
++        {
++            ChooseAdventure(AdventureDbId.BOH, AdventureModeDbId.DUNGEON_CRAWL);
++        }
++
 +        public void OnAdventureChooserTrayAwake(AdventureChooserTray adventureChooserTray)
 +        {
++            AccessibilityUtils.LogDebug($"OnAdventureChooserTrayAwake({adventureChooserTray})");
 +            m_adventureChooserTray = adventureChooserTray;
 +        }
 +
@@ -967,7 +1129,7 @@ index 0000000..c9029ea
 +
 +        private void ChooseAdventure(AdventureDbId adventure, AdventureModeDbId mode)
 +        {
-+            AdventureConfig.Get().SetSelectedAdventureMode(AdventureDbId.PRACTICE, AdventureModeDbId.LINEAR);
++            AdventureConfig.Get().SetSelectedAdventureMode(adventure, mode);
 +            m_adventureChooserTray.m_ChooseButton.TriggerRelease();
 +        }
 +
@@ -6190,10 +6352,10 @@ index 0000000..fd78b9f
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleInputMgr.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleInputMgr.cs
 new file mode 100644
-index 0000000..5c1512c
+index 0000000..541cb10
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleInputMgr.cs
-@@ -0,0 +1,186 @@
+@@ -0,0 +1,192 @@
 +﻿using System;
 +using System.Collections;
 +using System.Collections.Generic;
@@ -6242,6 +6404,12 @@ index 0000000..5c1512c
 +
 +        public static void ClickLeftMouseButton()
 +        {
++            ClickLeftMouseButtonImpl();
++        }
++
++        public static void ClickLeftMouseButton(Component component)
++        {
++            MoveMouseTo(component);
 +            ClickLeftMouseButtonImpl();
 +        }
 +
@@ -10276,10 +10444,10 @@ index 0000000..0306ff0
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/CardEffectInterpreter.cs b/Decompiled/Assembly-CSharp/Accessibility/CardEffectInterpreter.cs
 new file mode 100644
-index 0000000..48b8a84
+index 0000000..4197759
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/CardEffectInterpreter.cs
-@@ -0,0 +1,388 @@
+@@ -0,0 +1,390 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Globalization;
@@ -10567,12 +10735,14 @@ index 0000000..48b8a84
 +        private static Regex s_dealXYDamageRegex = new Regex(@".*Deal \*?\d+\*?-\*?\d\*? damage.*");
 +        private static Regex s_dealNDamageBrokenRegex = new Regex(@".*Deal_\*?\d+\*? damage.*");
 +        private static Regex s_dealNDamageBroken2Regex = new Regex(@".*Deal_\*?\d+\*?_damage.*");
++        private static Regex s_dealNDamageMidStringRegex = new Regex(@".*, deal \*?\d+\*? damage.*"); // See Scalerider
 +        private static bool IsDealNDamage(string cardText)
 +        {
 +            return s_dealNDamageRegex.Match(cardText).Success ||
 +                s_dealXYDamageRegex.Match(cardText).Success ||
 +                s_dealNDamageBrokenRegex.Match(cardText).Success ||
-+                s_dealNDamageBroken2Regex.Match(cardText).Success;
++                s_dealNDamageBroken2Regex.Match(cardText).Success ||
++                s_dealNDamageMidStringRegex.Match(cardText).Success;
 +        }
 +
 +        private static bool IsTakeControl(string cardText)
@@ -11035,10 +11205,10 @@ index 0000000..6f06a3e
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 0000000..a060218
+index 0000000..9454a89
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,32 @@
 +﻿using System.IO;
 +
 +namespace Accessibility
@@ -11050,6 +11220,8 @@ index 0000000..a060218
 +        public static string HEARTHSTONE_ACCESS_VERSION = "1";
 +
 +        public static bool DEV_MODE = false;
++
++        public static bool DEBUG_SOUND = false;
 +
 +        public static string GetGithubToken()
 +        {
@@ -15120,29 +15292,456 @@ index 654b15c..a96c0d0 100644
  
  	private void Start()
 diff --git a/Decompiled/Assembly-CSharp/AdventureConfig.cs b/Decompiled/Assembly-CSharp/AdventureConfig.cs
-index c8b0a47..31d3a74 100644
+index c8b0a47..24a4021 100644
 --- a/Decompiled/Assembly-CSharp/AdventureConfig.cs
 +++ b/Decompiled/Assembly-CSharp/AdventureConfig.cs
-@@ -999,8 +999,17 @@ public class AdventureConfig : MonoBehaviour
+@@ -5,6 +5,7 @@ using Hearthstone.DataModels;
+ using Hearthstone.DungeonCrawl;
+ using Hearthstone.UI;
+ using UnityEngine;
++using Accessibility;
+ 
+ [CustomEditClass]
+ public class AdventureConfig : MonoBehaviour
+@@ -71,7 +72,7 @@ public class AdventureConfig : MonoBehaviour
+ 
+ 	private Map<AdventureDbId, AdventureModeDbId> m_ClientChooserAdventureModes = new Map<AdventureDbId, AdventureModeDbId>();
+ 
+-	private AdventureDbId SelectedAdventure
++	internal AdventureDbId SelectedAdventure
+ 	{
+ 		get
+ 		{
+@@ -95,7 +96,7 @@ public class AdventureConfig : MonoBehaviour
+ 		}
+ 	}
+ 
+-	private AdventureModeDbId SelectedMode
++	internal AdventureModeDbId SelectedMode
+ 	{
+ 		get
+ 		{
+@@ -420,6 +421,7 @@ public class AdventureConfig : MonoBehaviour
+ 
+ 	public void SetSelectedAdventureMode(AdventureDbId adventureId, AdventureModeDbId modeId)
+ 	{
++		AccessibilityUtils.LogDebug($"SetSelectedAdventureMode({adventureId}, {modeId})");
+ 		SelectedAdventure = adventureId;
+ 		SelectedMode = modeId;
+ 		m_ClientChooserAdventureModes[adventureId] = modeId;
+@@ -663,6 +665,7 @@ public class AdventureConfig : MonoBehaviour
+ 
+ 	public void ChangeSubScene(AdventureData.Adventuresubscene subscene, bool pushToBackStack = true)
+ 	{
++		AccessibilityUtils.LogDebug($"ChangeSubScene({subscene})");
+ 		if (subscene == m_CurrentSubScene)
+ 		{
+ 			Debug.Log($"Sub scene {subscene} is already set.");
+@@ -999,9 +1002,10 @@ public class AdventureConfig : MonoBehaviour
  
  	public void OnAdventureSceneAwake()
  	{
 -		SelectedAdventure = Options.Get().GetEnum(Option.SELECTED_ADVENTURE, AdventureDbId.PRACTICE);
 -		SelectedMode = Options.Get().GetEnum(Option.SELECTED_ADVENTURE_MODE, AdventureModeDbId.LINEAR);
-+		if (Accessibility.AccessibilityMgr.IsAccessibilityEnabled())
+-		if (!ShouldDisplayAdventure(SelectedAdventure))
++        SelectedAdventure = Options.Get().GetEnum(Option.SELECTED_ADVENTURE, AdventureDbId.PRACTICE);
++        SelectedMode = Options.Get().GetEnum(Option.SELECTED_ADVENTURE_MODE, AdventureModeDbId.LINEAR);
++
++        if (!ShouldDisplayAdventure(SelectedAdventure))
+ 		{
+ 			SelectedAdventure = AdventureDbId.PRACTICE;
+ 			SelectedMode = AdventureModeDbId.LINEAR;
+diff --git a/Decompiled/Assembly-CSharp/AdventureDungeonCrawlDeckTray.cs b/Decompiled/Assembly-CSharp/AdventureDungeonCrawlDeckTray.cs
+index 2c68893..5c62a57 100644
+--- a/Decompiled/Assembly-CSharp/AdventureDungeonCrawlDeckTray.cs
++++ b/Decompiled/Assembly-CSharp/AdventureDungeonCrawlDeckTray.cs
+@@ -5,7 +5,7 @@ public class AdventureDungeonCrawlDeckTray : BasePhoneDeckTray
+ {
+ 	public PlayMakerFSM DeckTrayGlow;
+ 
+-	private CollectionDeck m_deck;
++	internal CollectionDeck m_deck;
+ 
+ 	protected override void Awake()
+ 	{
+diff --git a/Decompiled/Assembly-CSharp/AdventureDungeonCrawlDisplay.cs b/Decompiled/Assembly-CSharp/AdventureDungeonCrawlDisplay.cs
+index 51c79d8..3614891 100644
+--- a/Decompiled/Assembly-CSharp/AdventureDungeonCrawlDisplay.cs
++++ b/Decompiled/Assembly-CSharp/AdventureDungeonCrawlDisplay.cs
+@@ -9,9 +9,10 @@ using PegasusClient;
+ using PegasusShared;
+ using PegasusUtil;
+ using UnityEngine;
++using Accessibility;
+ 
+ [CustomEditClass]
+-public class AdventureDungeonCrawlDisplay : MonoBehaviour
++public class AdventureDungeonCrawlDisplay : MonoBehaviour, AccessibleScreen
+ {
+ 	[Serializable]
+ 	public class DungeonCrawlDisplayStyleOverride
+@@ -294,15 +295,15 @@ public class AdventureDungeonCrawlDisplay : MonoBehaviour
+ 		m_subsceneController.TransitionComplete += OnSubSceneTransitionComplete;
+ 		AdventureDbId selectedAdv = m_dungeonCrawlData.GetSelectedAdventure();
+ 		AdventureModeDbId selectedMode = m_dungeonCrawlData.GetSelectedMode();
+-		AdventureDataDbfRecord adventureDataRecord = GameUtils.GetAdventureDataRecord((int)selectedAdv, (int)selectedMode);
++		m_adventureDataRecord = GameUtils.GetAdventureDataRecord((int)selectedAdv, (int)selectedMode);
+ 		m_playerHeroData = new PlayerHeroData(m_dungeonCrawlData);
+ 		m_playerHeroData.OnHeroDataChanged += delegate
+ 		{
+ 			m_playMat.SetPlayerHeroDbId(m_playerHeroData.HeroDbId);
+ 		};
+-		m_AdventureTitle.Text = adventureDataRecord.Name;
+-		m_gameSaveDataServerKey = (GameSaveKeyId)adventureDataRecord.GameSaveDataServerKey;
+-		m_gameSaveDataClientKey = (GameSaveKeyId)adventureDataRecord.GameSaveDataClientKey;
++		m_AdventureTitle.Text = m_adventureDataRecord.Name;
++		m_gameSaveDataServerKey = (GameSaveKeyId)m_adventureDataRecord.GameSaveDataServerKey;
++		m_gameSaveDataClientKey = (GameSaveKeyId)m_adventureDataRecord.GameSaveDataClientKey;
+ 		if (m_gameSaveDataServerKey <= (GameSaveKeyId)0)
+ 		{
+ 			Debug.LogErrorFormat("Adventure {0} Mode {1} has no GameSaveDataKey set! This mode does not work without defining GAME_SAVE_DATA_SERVER_KEY in ADVENTURE.dbi!", selectedAdv, selectedMode);
+@@ -315,7 +316,7 @@ public class AdventureDungeonCrawlDisplay : MonoBehaviour
+ 		{
+ 			Debug.LogErrorFormat("Adventure {0} Mode {1} has an equal GameSaveDataKey for Client and Server. These keys are not allowed to be equal!", selectedAdv, selectedMode);
+ 		}
+-		m_bossCardBackId = adventureDataRecord.BossCardBack;
++		m_bossCardBackId = m_adventureDataRecord.BossCardBack;
+ 		if (m_bossCardBackId == 0)
+ 		{
+ 			m_bossCardBackId = 0;
+@@ -347,13 +348,13 @@ public class AdventureDungeonCrawlDisplay : MonoBehaviour
+ 				Log.Adventures.Print("Owns wing for this Dungeon Run? {0}", AdventureProgressMgr.Get().OwnsWing(scenarioDbfRecord2.WingId));
+ 			}
+ 		}
+-		m_shouldSkipHeroSelect = adventureDataRecord.DungeonCrawlSkipHeroSelect;
+-		m_mustPickShrine = adventureDataRecord.DungeonCrawlMustPickShrine;
+-		m_mustSelectChapter = adventureDataRecord.DungeonCrawlSelectChapter;
+-		m_anomalyModeCardDbId = adventureDataRecord.AnomalyModeDefaultCardId;
++		m_shouldSkipHeroSelect = m_adventureDataRecord.DungeonCrawlSkipHeroSelect;
++		m_mustPickShrine = m_adventureDataRecord.DungeonCrawlMustPickShrine;
++		m_mustSelectChapter = m_adventureDataRecord.DungeonCrawlSelectChapter;
++		m_anomalyModeCardDbId = m_adventureDataRecord.AnomalyModeDefaultCardId;
+ 		m_assetLoadingHelper.AddAssetToLoad();
+ 		m_dungeonCrawlPlayMatReference.RegisterReadyListener<AdventureDungeonCrawlPlayMat>(OnPlayMatReady);
+-		bool retireButtonSupported = adventureDataRecord.DungeonCrawlIsRetireSupported;
++		bool retireButtonSupported = m_adventureDataRecord.DungeonCrawlIsRetireSupported;
+ 		m_assetLoadingHelper.AddAssetToLoad();
+ 		m_retireButtonReference.RegisterReadyListener(delegate(Widget w)
+ 		{
+@@ -361,24 +362,7 @@ public class AdventureDungeonCrawlDisplay : MonoBehaviour
+ 			{
+ 				if (eventName == "Button_Framed_Clicked" && retireButtonSupported)
+ 				{
+-					m_retireButton.SetActive(value: false);
+-					AlertPopup.PopupInfo popupInfo = new AlertPopup.PopupInfo
+-					{
+-						m_headerText = GameStrings.Get("GLUE_ADVENTURE_DUNGEON_CRAWL_RETIRE_CONFIRMATION_HEADER"),
+-						m_text = GameStrings.Get("GLUE_ADVENTURE_DUNGEON_CRAWL_RETIRE_CONFIRMATION_BODY"),
+-						m_showAlertIcon = true,
+-						m_alertTextAlignmentAnchor = UberText.AnchorOptions.Middle,
+-						m_responseDisplay = AlertPopup.ResponseDisplay.CONFIRM_CANCEL
+-					};
+-					if (m_isPVPDR)
+-					{
+-						popupInfo.m_responseCallback = OnPVPDRRetirePopupResponse;
+-					}
+-					else
+-					{
+-						popupInfo.m_responseCallback = OnRetirePopupResponse;
+-					}
+-					DialogManager.Get().ShowPopup(popupInfo);
++					RetireFromAdventure();
+ 				}
+ 			});
+ 			m_retireButton = w.gameObject;
+@@ -415,7 +399,7 @@ public class AdventureDungeonCrawlDisplay : MonoBehaviour
+ 		SetDungeonCrawlDisplayVisualStyle();
+ 	}
+ 
+-	public void EnablePlayButton()
++    public void EnablePlayButton()
+ 	{
+ 		if (m_playMat != null)
+ 		{
+@@ -1098,6 +1082,7 @@ public class AdventureDungeonCrawlDisplay : MonoBehaviour
+ 			m_retireButton.SetActive(adventureDataRecord.DungeonCrawlIsRetireSupported);
+ 		}
+ 		m_assetLoadingHelper.AssetLoadCompleted();
++		ReadScreen();
+ 	}
+ 
+ 	private void OnPlayMatPaperControllerReady(VisualController paperController)
+@@ -3129,4 +3114,214 @@ public class AdventureDungeonCrawlDisplay : MonoBehaviour
+ 		Navigation.PopBlockBackingOut();
+ 		Navigation.GoBack();
+ 	}
++
++	#region Accessibility
++
++	private enum AccessibleState { WAITING, IS_VO_PLAYING, READING_PLAY_MENU, READING_DECK, RUN_COMPLETED };
++
++	private AccessibleState m_curAccessibleState;
++
++	private AccessibleState m_stateAfterVO;
++
++	private AccessibleMenu m_accessibleMenu;
++
++	private AccessibleListOfItems<AccessibleCollectibleCard> m_accessibleDeckTray;
++
++	private AdventureDataDbfRecord m_adventureDataRecord;
++
++	private void ReadScreen()
++    {
++		if (!SupportedAdventure())
 +        {
-+            SelectedAdventure = AdventureDbId.PRACTICE;
-+            SelectedMode = AdventureModeDbId.LINEAR;
++			return;
++        }
++
++		AccessibilityMgr.SetScreen(this);
++
++		if (ShouldShowRunCompletedScreen())
++        {
++			ReadCompletedScreen();
 +        }
 +		else
 +        {
-+			SelectedAdventure = Options.Get().GetEnum(Option.SELECTED_ADVENTURE, AdventureDbId.PRACTICE);
-+			SelectedMode = Options.Get().GetEnum(Option.SELECTED_ADVENTURE_MODE, AdventureModeDbId.LINEAR);
++            ReadPlayMenu(); // TODO: Figure out a cleanway to delay this until VO plays that doesn't require refactoring playMat..
++        }
++    }
++
++    private void ReadCompletedScreen()
++    {
++		m_curAccessibleState = AccessibleState.RUN_COMPLETED;
++		m_stateAfterVO = AccessibleState.RUN_COMPLETED;
++
++		AccessibilityMgr.Output(GetAdventureCompleteSpeech());
++    }
++
++	private string GetAdventureCompleteSpeech()
++    {
++		return $"Adventure complete. Press {AccessibleKey.CONFIRM} to finish";
++    }
++
++    private void ReadPlayMenu()
++    {
++		m_curAccessibleState = AccessibleState.READING_PLAY_MENU;
++		m_stateAfterVO = AccessibleState.READING_PLAY_MENU;
++
++		var numDefeatedBosses = m_playMat.m_numBossesDefeated;
++		var numBossesInRun = m_playMat.m_bossesPerRun;
++
++        AccessibilityMgr.Output($"You're on opponent number {numDefeatedBosses + 1} out of {numBossesInRun}");
++
++		m_accessibleMenu = new AccessibleMenu("Adventure menu", () => m_BackButton.TriggerRelease());
++
++		m_accessibleMenu.AddOption("Play", () => m_playMat.ClickPlayButton());
++        m_accessibleMenu.AddOption("Read Deck", ReadDeck);
++
++        if (m_adventureDataRecord.DungeonCrawlIsRetireSupported)
++        {
++			m_accessibleMenu.AddOption("Retire", () => RetireFromAdventure());
++        }
++
++		m_accessibleMenu.StartReading();
++    }
++
++    private void ReadDeck()
++	{
++		if (m_dungeonCrawlDeckTray == null || m_dungeonCrawlDeckTray.m_deck == null || m_dungeonCrawlDeckTray.m_deck.GetCards().Count == 0)
++		{
++			AccessibilityMgr.Output("You can't read your deck in this adventure");
++			return;
 +		}
 +
- 		if (!ShouldDisplayAdventure(SelectedAdventure))
++		m_curAccessibleState = AccessibleState.READING_DECK;
++
++		var cards = m_dungeonCrawlDeck.GetDeckContents();
++
++		var accessibleCards = new List<AccessibleCollectibleCard>(cards.Cards.Count);
++
++		foreach (var card in cards.Cards)
++        {
++			var cardDbId = card.Def.Asset;
++			var cardId = GameUtils.TranslateDbIdToCardId(cardDbId);
++			var cardQty = card.Qty;
++			var entityDef = DefLoader.Get().GetEntityDef(cardId);
++			var cardRecord = GameUtils.GetCardRecord(cardId);
++			var collectibleCard = new CollectibleCard(cardRecord, entityDef, TAG_PREMIUM.NORMAL);
++			collectibleCard.OwnedCount = cardQty;
++			var accessibleCollectibleCard = new AccessibleCollectibleCard(collectibleCard, true);
++
++			accessibleCards.Add(accessibleCollectibleCard);
++        }
++
++		m_accessibleDeckTray = new AccessibleListOfItems<AccessibleCollectibleCard>(accessibleCards);
++		m_accessibleDeckTray.StartReading();
++    }
++
++    private bool SupportedAdventure()
++    {
++		return m_dungeonCrawlData.GetSelectedAdventure() == AdventureDbId.BOH;
++    }
++
++    public void HandleInput()
++    {
++		// Wait for VO to finish
++		if (NotificationManager.Get().IsQuotePlaying)
++        {
++			m_curAccessibleState = AccessibleState.IS_VO_PLAYING;
++			return;
++        }
++		else if (m_curAccessibleState == AccessibleState.IS_VO_PLAYING)
++        {
++			if (m_stateAfterVO == AccessibleState.RUN_COMPLETED)
++            {
++				ReadCompletedScreen();
++            }
++			else
++            {
++                // Repeat menu
++                ReadPlayMenu();
++            }
++
++            return;
++        }
++
++		// Normal flow
++		if (m_curAccessibleState == AccessibleState.READING_PLAY_MENU)
++        {
++            m_accessibleMenu.HandleAccessibleInput();
++        }
++		else if (m_curAccessibleState == AccessibleState.READING_DECK)
++        {
++			if (AccessibleKey.BACK.IsPressed())
++            {
++				m_curAccessibleState = AccessibleState.READING_PLAY_MENU;
++				m_accessibleMenu.StartReading();
++            }
++			else
++            {
++				m_accessibleDeckTray.HandleAccessibleInput();
++
++				var curCardIdx = m_accessibleDeckTray.GetItemBeingReadIndex();
++				var cardTiles = m_dungeonCrawlDeckTray.GetCardsContent().GetCardTiles();
++				AccessibleInputMgr.MoveMouseTo(cardTiles[curCardIdx]);
++            }
++        }
++		else if (m_curAccessibleState == AccessibleState.RUN_COMPLETED)
++        {
++			if (AccessibleKey.CONFIRM.IsPressed())
++            {
++				m_BackButton.TriggerRelease();
++            }
++        }
++    }
++
++    public string GetHelp()
++    {
++		if (m_curAccessibleState == AccessibleState.READING_PLAY_MENU)
++        {
++            return AccessibleSpeech.MENU_HELP(true);
++        }
++		else if (m_curAccessibleState == AccessibleState.RUN_COMPLETED)
++        {
++			return GetAdventureCompleteSpeech();
++        }
++        else if (m_curAccessibleState == AccessibleState.READING_DECK)
++        {
++			return $"Use the arrow keys to read your cards. Press {AccessibleKey.BACK} once you're done";
++        }
++		else if (m_curAccessibleState == AccessibleState.IS_VO_PLAYING)
++        {
++			return "Waiting for voice-over to end";
++        }
++
++		return "";
++    }
++
++    public void OnGainedFocus()
++    {
++		AccessibilityMgr.Output("Adventure screen");
++    }
++
++    private void RetireFromAdventure()
++    {
++        m_retireButton.SetActive(value: false);
++        AlertPopup.PopupInfo popupInfo = new AlertPopup.PopupInfo
++        {
++            m_headerText = GameStrings.Get("GLUE_ADVENTURE_DUNGEON_CRAWL_RETIRE_CONFIRMATION_HEADER"),
++            m_text = GameStrings.Get("GLUE_ADVENTURE_DUNGEON_CRAWL_RETIRE_CONFIRMATION_BODY"),
++            m_showAlertIcon = true,
++            m_alertTextAlignmentAnchor = UberText.AnchorOptions.Middle,
++            m_responseDisplay = AlertPopup.ResponseDisplay.CONFIRM_CANCEL
++        };
++        if (m_isPVPDR)
++        {
++            popupInfo.m_responseCallback = OnPVPDRRetirePopupResponse;
++        }
++        else
++        {
++            popupInfo.m_responseCallback = OnRetirePopupResponse;
++        }
++        DialogManager.Get().ShowPopup(popupInfo);
++    }
++
++    #endregion
+ }
+diff --git a/Decompiled/Assembly-CSharp/AdventureDungeonCrawlPlayMat.cs b/Decompiled/Assembly-CSharp/AdventureDungeonCrawlPlayMat.cs
+index ae331d3..3ed71b5 100644
+--- a/Decompiled/Assembly-CSharp/AdventureDungeonCrawlPlayMat.cs
++++ b/Decompiled/Assembly-CSharp/AdventureDungeonCrawlPlayMat.cs
+@@ -7,6 +7,7 @@ using Hearthstone.DungeonCrawl;
+ using Hearthstone.Progression;
+ using Hearthstone.UI;
+ using UnityEngine;
++using Accessibility;
+ 
+ [CustomEditClass]
+ public class AdventureDungeonCrawlPlayMat : MonoBehaviour
+@@ -266,9 +267,9 @@ public class AdventureDungeonCrawlPlayMat : MonoBehaviour
+ 
+ 	private OptionType m_currentOptionType;
+ 
+-	private int m_numBossesDefeated;
++	internal int m_numBossesDefeated;
+ 
+-	private int m_bossesPerRun;
++	internal int m_bossesPerRun;
+ 
+ 	private bool m_allowPlayButtonAnimation;
+ 
+@@ -1112,10 +1113,13 @@ public class AdventureDungeonCrawlPlayMat : MonoBehaviour
+ 		}
+ 		if ((!(m_bossHeroPowerTooltip != null) || m_bossHeroPowerTooltip.IsDying()) && m_shouldShowBossHeroPowerTooltip)
  		{
- 			SelectedAdventure = AdventureDbId.PRACTICE;
+-			m_bossHeroPowerTooltip = NotificationManager.Get().CreatePopupText(UserAttentionBlocker.NONE, m_bossHeroPowerTooltipBone.transform.localPosition, m_bossHeroPowerTooltipBone.transform.localScale, GameStrings.Get(HERO_POWER_TOOLTIP_STRING));
+-			m_bossHeroPowerTooltip.ShowPopUpArrow(Notification.PopUpArrowDirection.Left);
+-			m_bossHeroPowerTooltip.PulseReminderEveryXSeconds(m_bossHeroPowerTooltipPulseRate);
+-		}
++			if (!AccessibilityMgr.IsAccessibilityEnabled())
++            {
++                m_bossHeroPowerTooltip = NotificationManager.Get().CreatePopupText(UserAttentionBlocker.NONE, m_bossHeroPowerTooltipBone.transform.localPosition, m_bossHeroPowerTooltipBone.transform.localScale, GameStrings.Get(HERO_POWER_TOOLTIP_STRING));
++                m_bossHeroPowerTooltip.ShowPopUpArrow(Notification.PopUpArrowDirection.Left);
++                m_bossHeroPowerTooltip.PulseReminderEveryXSeconds(m_bossHeroPowerTooltipPulseRate);
++            }
++        }
+ 	}
+ 
+ 	public void HideBossHeroPowerTooltip(bool immediate = false)
+@@ -1890,4 +1894,13 @@ public class AdventureDungeonCrawlPlayMat : MonoBehaviour
+ 			}
+ 		}
+ 	}
++
++    #region Accessibility
++
++    internal void ClickPlayButton()
++    {
++		m_playButton.TriggerRelease();
++    }
++
++    #endregion
+ }
 diff --git a/Decompiled/Assembly-CSharp/AdventureMissionDisplay.cs b/Decompiled/Assembly-CSharp/AdventureMissionDisplay.cs
 index 080cec8..419b3fb 100644
 --- a/Decompiled/Assembly-CSharp/AdventureMissionDisplay.cs
@@ -15632,6 +16231,38 @@ index 8a8d3a7..4e1e7ee 100644
 +
 +	#endregion
  }
+diff --git a/Decompiled/Assembly-CSharp/BoH_Jaina_06.cs b/Decompiled/Assembly-CSharp/BoH_Jaina_06.cs
+index 6dc59e8..20c43ae 100644
+--- a/Decompiled/Assembly-CSharp/BoH_Jaina_06.cs
++++ b/Decompiled/Assembly-CSharp/BoH_Jaina_06.cs
+@@ -1,6 +1,7 @@
+ using System.Collections;
+ using System.Collections.Generic;
+ using UnityEngine;
++using Accessibility;
+ 
+ public class BoH_Jaina_06 : BoH_Jaina_Dungeon
+ {
+@@ -296,7 +297,18 @@ public class BoH_Jaina_06 : BoH_Jaina_Dungeon
+ 		switch (turn)
+ 		{
+ 		case 1:
+-			yield return PlayLineAlways(friendlyActor, VO_Story_Hero_Jaina_Human_Female_Story_Jaina_Mission6ExchangeA_01);
++				// TODO: Consider doing something generic on first turn start of PowerTaskListDescriber
++				if (AccessibilityMgr.IsAccessibilityEnabled())
++                {
++					var gatesOfTheramore = GameState.Get().GetFriendlySidePlayer().GetBattlefieldZone().GetCards();
++					var startingCardsInBattlefield = AccessibleSpeechUtils.GetNames(gatesOfTheramore);
++
++					if (gatesOfTheramore.Count > 0)
++                    {
++						AccessibilityMgr.Output($"Your battlefield starts with {startingCardsInBattlefield}");
++                    }
++                }
++                yield return PlayLineAlways(friendlyActor, VO_Story_Hero_Jaina_Human_Female_Story_Jaina_Mission6ExchangeA_01);
+ 			yield return PlayLineAlways(enemyActor, VO_Story_Hero_Garrosh_Male_Orc_Story_Jaina_Mission6ExchangeA_01);
+ 			break;
+ 		case 5:
 diff --git a/Decompiled/Assembly-CSharp/BookTab.cs b/Decompiled/Assembly-CSharp/BookTab.cs
 index a39c1b9..8143436 100644
 --- a/Decompiled/Assembly-CSharp/BookTab.cs
@@ -19765,7 +20396,7 @@ index e002069..ef5140e 100644
  			return false;
  		}
 diff --git a/Decompiled/Assembly-CSharp/NotificationManager.cs b/Decompiled/Assembly-CSharp/NotificationManager.cs
-index 79fd88b..508ded3 100644
+index 79fd88b..4111cbe 100644
 --- a/Decompiled/Assembly-CSharp/NotificationManager.cs
 +++ b/Decompiled/Assembly-CSharp/NotificationManager.cs
 @@ -1,3 +1,4 @@
@@ -19773,6 +20404,15 @@ index 79fd88b..508ded3 100644
  using System;
  using System.Collections;
  using System.Collections.Generic;
+@@ -241,7 +242,7 @@ public class NotificationManager : MonoBehaviour
+ 
+ 	private Notification popUpDialog;
+ 
+-	private Notification m_quote;
++	internal Notification m_quote;
+ 
+ 	private List<string> m_quotesThisSession;
+ 
 @@ -289,28 +290,28 @@ public class NotificationManager : MonoBehaviour
  		return s_instance;
  	}
@@ -22150,10 +22790,18 @@ index 05df5d7..bafbe4e 100644
  			return;
  		}
 diff --git a/Decompiled/Assembly-CSharp/SoundManager.cs b/Decompiled/Assembly-CSharp/SoundManager.cs
-index 57977a9..bd70eca 100644
+index 57977a9..68a0635 100644
 --- a/Decompiled/Assembly-CSharp/SoundManager.cs
 +++ b/Decompiled/Assembly-CSharp/SoundManager.cs
-@@ -711,8 +711,8 @@ public class SoundManager : IService, IHasFixedUpdate, IHasUpdate
+@@ -11,6 +11,7 @@ using Blizzard.T5.Services;
+ using Hearthstone;
+ using Hearthstone.Core;
+ using UnityEngine;
++using Accessibility;
+ 
+ public class SoundManager : IService, IHasFixedUpdate, IHasUpdate
+ {
+@@ -711,8 +712,8 @@ public class SoundManager : IService, IHasFixedUpdate, IHasUpdate
  			SoundLoadContext soundLoadContext = new SoundLoadContext();
  			soundLoadContext.Init(parent, volume, callback, callbackData);
  			SoundLoader.LoadSound(assetRef, OnLoadAndPlaySoundLoaded, soundLoadContext, GetPlaceholderSound());
@@ -22164,7 +22812,7 @@ index 57977a9..bd70eca 100644
  
  	public void PlayPreloaded(AudioSource source)
  	{
-@@ -744,7 +744,7 @@ public class SoundManager : IService, IHasFixedUpdate, IHasUpdate
+@@ -744,7 +745,7 @@ public class SoundManager : IService, IHasFixedUpdate, IHasUpdate
  		InitSourceTransform(source, parentObject);
  		m_generatedSources.Add(source);
  		Play(source);
@@ -22173,7 +22821,7 @@ index 57977a9..bd70eca 100644
  
  	public AudioSource PlayClip(SoundPlayClipArgs args, bool createNewSource = true, SoundOptions options = null)
  	{
-@@ -849,7 +849,7 @@ public class SoundManager : IService, IHasFixedUpdate, IHasUpdate
+@@ -849,7 +850,7 @@ public class SoundManager : IService, IHasFixedUpdate, IHasUpdate
  			return;
  		}
  		RegisterSourceBundle(assetRef, component);
@@ -22182,6 +22830,22 @@ index 57977a9..bd70eca 100644
  		component.Play();
  		component.Stop();
  		UnregisterSourceBundle(assetRef.ToString(), component);
+@@ -2103,7 +2104,14 @@ public class SoundManager : IService, IHasFixedUpdate, IHasUpdate
+ 			}
+ 			HearthstoneApplication.Get().StartCoroutine(EnableInstanceLimitedSound(source.gameObject.name, num2));
+ 		}
+-		source.Play();
++
++		if (HearthstoneAccessConstants.DEBUG_SOUND)
++        {
++            AccessibilityUtils.LogDebug($"Playing sound: {source.name}");
++			AccessibilityUtils.LogDebug(Environment.StackTrace);
++        }
++
++        source.Play();
+ 		return source;
+ 	}
+ 
 diff --git a/Decompiled/Assembly-CSharp/SpectatorManager.cs b/Decompiled/Assembly-CSharp/SpectatorManager.cs
 index 360b283..c02c86e 100644
 --- a/Decompiled/Assembly-CSharp/SpectatorManager.cs
