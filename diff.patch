@@ -1558,11 +1558,13 @@ index 0000000..cdc2bbd
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleCard.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCard.cs
 new file mode 100644
-index 0000000..97fe191
+index 0000000..9d114d0
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCard.cs
-@@ -0,0 +1,310 @@
-+﻿using System.Collections.Generic;
+@@ -0,0 +1,355 @@
++﻿using System;
++using System.Collections.Generic;
++using System.Text;
 +
 +namespace Accessibility
 +{
@@ -1597,6 +1599,20 @@ index 0000000..97fe191
 +
 +        private List<string> GetLinesForHero()
 +        {
++            var zone = m_card.GetEntity().GetZone();
++
++            if (zone == TAG_ZONE.PLAY)
++            {
++                return GetLinesForHeroInPlayZone();
++            }
++            else
++            {
++                return GetLinesForHeroCard();
++            }
++        }
++
++        private List<string> GetLinesForHeroInPlayZone()
++        {
 +            var lines = new List<string>();
 +            lines.Add(GetName());
 +
@@ -1615,6 +1631,35 @@ index 0000000..97fe191
 +            {
 +                AccessibleCardUtils.AddLineIfExists(GetEffects(), lines);
 +            }
++
++            lines.Add(m_card.GetEntity().GetEntityDef().GetName());
++
++            return lines;
++        }
++
++        private List<string> GetLinesForHeroCard()
++        {
++            var lines = new List<string>();
++            lines.Add(GetName());
++            lines.Add(GetCost());
++            lines.Add(GetType());
++
++            var armor = m_card.GetEntity().GetArmor();
++
++            lines.Add(LocalizationUtils.Format(LocalizationKey.READ_HERO_CARD_ARMOR, armor));
++
++            AccessibleCardUtils.AddLineIfExists(GetDescription(), lines);
++
++            try
++            {
++                lines.AddRange(AccessibleCardUtils.GetHeroPowerCardLinesForHeroCard(m_card.GetEntity().GetCardId()));
++            }
++            catch (Exception e)
++            {
++                AccessibilityUtils.LogFatalError(e);
++            }
++
++            AccessibleCardUtils.AddLineIfExists(GetRarity(), lines);
 +
 +            return lines;
 +        }
@@ -1825,7 +1870,7 @@ index 0000000..97fe191
 +
 +        internal string GetName()
 +        {
-+            if (m_card.GetEntity().IsHero())
++            if (m_card.GetEntity().IsHero() && m_card.GetEntity().GetZone() == TAG_ZONE.PLAY)
 +            {
 +                if (m_card.GetEntity().IsControlledByFriendlySidePlayer())
 +                {
@@ -1874,10 +1919,10 @@ index 0000000..97fe191
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleCardUtils.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCardUtils.cs
 new file mode 100644
-index 0000000..d006f77
+index 0000000..d724b4e
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCardUtils.cs
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,61 @@
 +﻿using System;
 +using System.Collections.Generic;
 +
@@ -1916,6 +1961,26 @@ index 0000000..d006f77
 +            }
 +
 +            lines.Add(line);
++        }
++
++        public static List<string> GetHeroPowerCardLinesForHeroCard(string heroCardId)
++        {
++            var ret = new List<string>();
++
++            var heroPowerCardId = GameUtils.GetHeroPowerCardIdFromHero(heroCardId);
++            EntityDef entityDef = DefLoader.Get().GetEntityDef(heroPowerCardId);
++            var heroPowerName = entityDef.GetName();
++
++            ret.Add(AccessibleSpeechUtils.CombineSentences(LocalizationUtils.Get(LocalizationKey.GAMEPLAY_ZONE_PLAYER_HERO_POWER), heroPowerName));
++
++            if (!entityDef.HasTag(GAME_TAG.HIDE_STATS) && !entityDef.HasTag(GAME_TAG.HIDE_COST))
++            {
++                ret.Add(LocalizationUtils.Format(LocalizationKey.READ_CARD_COST, entityDef.GetCost()));
++            }
++
++            AccessibleCardUtils.AddLineIfExists(entityDef.GetCardTextInHand(), ret);
++
++            return ret;
 +        }
 +    }
 +}
@@ -1961,11 +2026,12 @@ index 0000000..926fe77
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleCollectibleCard.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCollectibleCard.cs
 new file mode 100644
-index 0000000..0b2000e
+index 0000000..6c7e232
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCollectibleCard.cs
-@@ -0,0 +1,207 @@
-+﻿using System.Collections.Generic;
+@@ -0,0 +1,261 @@
++﻿using System;
++using System.Collections.Generic;
 +
 +namespace Accessibility
 +{
@@ -1995,6 +2061,12 @@ index 0000000..0b2000e
 +
 +        internal override List<string> GetLines()
 +        {
++            Log.Accessibility.Print("Card.GetLines()");
++            Log.Accessibility.Print(m_card.Name);
++            Log.Accessibility.Print(m_card.CardId);
++            Log.Accessibility.Print($"{m_card.CardDbId}");
++            Log.Accessibility.Print($"{m_card.CardType}");
++
 +            switch (m_card.CardType)
 +            {
 +                case TAG_CARDTYPE.HERO:
@@ -2015,10 +2087,57 @@ index 0000000..0b2000e
 +
 +        private List<string> GetLinesForHero()
 +        {
++            if (m_card.IsHeroSkin)
++            {
++                return GetLinesForHeroSkin();
++            }
++            else if (m_card.GetEntityDef().GetArmor() > 0) // TODO: Figure out how we can differentiate this as this is a wild guess
++            {
++                return GetLinesForHeroCard();
++            }
++            else
++            {
++                // Generic default just in case we're missing something
++                var lines = new List<string>();
++                lines.Add(GetName());
++
++                AccessibleCardUtils.AddLineIfExists(GetResources(), lines);
++
++                return lines;
++            }
++        }
++
++        private List<string> GetLinesForHeroCard()
++        {
 +            var lines = new List<string>();
 +            lines.Add(GetName());
++            lines.Add(GetCost());
++            lines.Add(GetType());
 +
-+            AccessibleCardUtils.AddLineIfExists(GetResources(), lines);
++            var armor = m_card.GetEntityDef().GetArmor();
++
++            lines.Add(LocalizationUtils.Format(LocalizationKey.READ_HERO_CARD_ARMOR, armor));
++
++            AccessibleCardUtils.AddLineIfExists(GetDescription(), lines);
++
++            try
++            {
++                lines.AddRange(AccessibleCardUtils.GetHeroPowerCardLinesForHeroCard(m_card.GetEntityDef().GetCardId()));
++            }
++            catch (Exception e)
++            {
++                AccessibilityUtils.LogFatalError(e);
++            }
++
++            AccessibleCardUtils.AddLineIfExists(GetRarity(), lines);
++
++            return lines;
++        }
++
++        private List<string> GetLinesForHeroSkin()
++        {
++            var lines = new List<string>();
++            lines.Add(GetName());
 +
 +            return lines;
 +        }
@@ -5070,10 +5189,10 @@ index 0000000..9e68ee7
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleInGameState.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleInGameState.cs
 new file mode 100644
-index 0000000..bd544e3
+index 0000000..ba9579d
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleInGameState.cs
-@@ -0,0 +1,1948 @@
+@@ -0,0 +1,1996 @@
 +﻿using Assets;
 +using System;
 +using System.Collections.Generic;
@@ -5373,7 +5492,7 @@ index 0000000..bd544e3
 +
 +            private void InitDiffDescriptions()
 +            {
-+                if (m_died || m_transformed || m_revealed)
++                if (m_died || m_transformed || m_revealed || IsHeroCardBeingPlayed())
 +                {
 +                    m_descSingular = m_descPlural = "";
 +                    return;
@@ -5575,6 +5694,11 @@ index 0000000..bd544e3
 +
 +                m_descSingular = AccessibleSpeechUtils.HumanizeList(sDescriptions);
 +                m_descPlural = AccessibleSpeechUtils.HumanizeList(pDescriptions);
++            }
++
++            private bool IsHeroCardBeingPlayed()
++            {
++                return m_after.IsHero() && m_before.GetZone() == TAG_ZONE.HAND && m_after.GetZone() == TAG_ZONE.PLAY;
 +            }
 +
 +            private bool ShouldReadImmunityChanges()
@@ -6249,6 +6373,8 @@ index 0000000..bd544e3
 +
 +        private static List<string> GetZoneMovementSpeeches(List<EntityDiff> entities, List<EntityGroup> groups)
 +        {
++            var ret = new List<string>();
++
 +            var drawnPlayerCards = new List<string>();
 +            var drawnOpponentCards = new List<string>();
 +            var discardedPlayerCards = new List<string>();
@@ -6352,7 +6478,26 @@ index 0000000..bd544e3
 +                // Fallback zones
 +                if (beforeZone == null || afterZone == null)
 +                {
-+                    if (after.GetZone() == TAG_ZONE.SETASIDE)
++                    if (after.GetZone() == TAG_ZONE.SETASIDE && before.IsHeroPower())
++                    {
++                        // A bit of a weird path but this is how Hero cards seem to be working
++                        var newHeroPower = before.GetController().GetHeroPower();
++
++                        if (newHeroPower != null && newHeroPower.GetEntityId() != before.GetEntityId())
++                        {
++                            var newHeroPowerName = newHeroPower.GetName();
++
++                            if (newHeroPower.IsControlledByFriendlySidePlayer())
++                            {
++                                ret.Add(LocalizationUtils.Format(LocalizationKey.GAMEPLAY_DIFF_MOVEMENT_PLAYER_HERO_POWER_CHANGED, newHeroPowerName));
++                            }
++                            else
++                            {
++                                ret.Add(LocalizationUtils.Format(LocalizationKey.GAMEPLAY_DIFF_MOVEMENT_OPPONENT_HERO_POWER_CHANGED, newHeroPowerName));
++                            }
++                        }
++                    }
++                    else if (after.GetZone() == TAG_ZONE.SETASIDE)
 +                    {
 +                        var cardName = GetCardNameForZoneMovement(after);
 +
@@ -6458,7 +6603,6 @@ index 0000000..bd544e3
 +
 +            var groupedMovementSpeeches = GroupSpeeches(entities, groups, speeches, false);
 +
-+            var ret = new List<string>();
 +            InsertPlayerInducedZoneMovements(ret, drawnPlayerCards, LocalizationKey.GAMEPLAY_PLAYER_DREW_CARDS);
 +            InsertPlayerInducedZoneMovements(ret, drawnOpponentCards, LocalizationKey.GAMEPLAY_OPPONENT_DREW_CARDS);
 +            InsertPlayerInducedZoneMovements(ret, discardedPlayerCards, LocalizationKey.GAMEPLAY_PLAYER_DISCARDED_CARDS);
@@ -6666,6 +6810,8 @@ index 0000000..bd544e3
 +            AccessibilityUtils.LogDebug(Environment.StackTrace);
 +            AccessibilityUtils.LogDebug("DebugDiff done");
 +
++            lines.AddRange(GetHeroChanges(before, after));
++
 +            lines.AddRange(GetSpeechLines(taskList, before, after));
 +
 +            // Turn stuff. At the end so we describe any pending triggers before this (done when NEXT_STEP = MAIN_START)
@@ -6728,6 +6874,27 @@ index 0000000..bd544e3
 +            }
 +
 +            return sb.ToString();
++        }
++
++        private static List<string> GetHeroChanges(AccessibleInGameState before, AccessibleInGameState after)
++        {
++            var ret = new List<string>();
++
++            AddHeroChangeIfNeeded(ret, before.m_playerHero, after.m_playerHero, true);
++            AddHeroChangeIfNeeded(ret, before.m_opponentHero, after.m_opponentHero, false);
++
++            return ret;
++        }
++
++        private static void AddHeroChangeIfNeeded(List<string> ret, Entity heroBefore, Entity heroAfter, bool isFriendlyHero)
++        {
++            if (heroBefore.GetEntityId() != heroAfter.GetEntityId())
++            {
++                var newHeroName = heroAfter.GetName();
++                var translationKey = isFriendlyHero ? LocalizationKey.GAMEPLAY_DIFF_MOVEMENT_PLAYER_HERO_CHANGED : LocalizationKey.GAMEPLAY_DIFF_MOVEMENT_OPPONENT_HERO_CHANGED;
++
++                ret.Add(LocalizationUtils.Format(translationKey, newHeroName));
++            }
 +        }
 +
 +        private static List<string> GetResourceChanges(AccessibleInGameState before, AccessibleInGameState after)
@@ -7400,10 +7567,10 @@ index 0000000..1ea10f3
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleKey.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleKey.cs
 new file mode 100644
-index 0000000..04aeee7
+index 0000000..5b365a3
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleKey.cs
-@@ -0,0 +1,274 @@
+@@ -0,0 +1,276 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using UnityEngine;
@@ -7429,6 +7596,8 @@ index 0000000..04aeee7
 +        public static AccessibleKey READ_PREV_VALID_ITEM = CreateKey(KeyCode.Tab, true);
 +        public static AccessibleKey READ_FIRST_ITEM = CreateKey(KeyCode.Home);
 +        public static AccessibleKey READ_LAST_ITEM = CreateKey(KeyCode.End);
++        public static AccessibleKey READ_NEXT_PAGE = CreateKey(KeyCode.PageDown);
++        public static AccessibleKey READ_PREV_PAGE = CreateKey(KeyCode.PageUp);
 +        public static AccessibleKey SKIP_NOTIFICATION = CreateKey(KeyCode.Space);
 +
 +        public static AccessibleKey DECREASE_GAME_SPEED = CreateKey(KeyCode.F11);
@@ -7680,10 +7849,10 @@ index 0000000..04aeee7
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleListOfItems.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleListOfItems.cs
 new file mode 100644
-index 0000000..68517dd
+index 0000000..7bb2e1e
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleListOfItems.cs
-@@ -0,0 +1,140 @@
+@@ -0,0 +1,162 @@
 +﻿using System;
 +using System.Collections.Generic;
 +
@@ -7728,6 +7897,16 @@ index 0000000..68517dd
 +            else if (AccessibleKey.READ_PREV_VALID_ITEM.IsPressed())
 +            {
 +                return ReadNextItem(-1, true);
++            }
++            else if (AccessibleKey.READ_FIRST_ITEM.IsPressed())
++            {
++                ReadFromTop();
++                return true;
++            }
++            else if (AccessibleKey.READ_LAST_ITEM.IsPressed())
++            {
++                ReadFromBottom();
++                return true;
 +            }
 +            else if (m_curItem != null && m_curItem.HandleAccessibleInput())
 +            {
@@ -7780,6 +7959,18 @@ index 0000000..68517dd
 +            {
 +                ReadNextItem(0);
 +            }
++        }
++
++        private void ReadFromTop()
++        {
++            m_curItemIdx = 0;
++            StartReading();
++        }
++
++        private void ReadFromBottom()
++        {
++            m_curItemIdx = m_items.Count - 1;
++            StartReading();
 +        }
 +
 +        internal void StartReadingReverse()
@@ -10784,7 +10975,7 @@ index 0000000..d7d60b6
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleSpeechUtils.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleSpeechUtils.cs
 new file mode 100644
-index 0000000..0b80af7
+index 0000000..c15c030
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleSpeechUtils.cs
 @@ -0,0 +1,275 @@
@@ -10796,7 +10987,7 @@ index 0000000..0b80af7
 +{
 +    class AccessibleSpeechUtils
 +    {
-+        private static string GetFullName(Entity entity)
++        internal static string GetFullName(Entity entity)
 +        {
 +            if (entity.IsControlledByFriendlySidePlayer())
 +            {
@@ -11940,10 +12131,10 @@ index 0000000..b0d6730
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/CollectionManager/AccessibleCollectionManager.cs b/Decompiled/Assembly-CSharp/Accessibility/CollectionManager/AccessibleCollectionManager.cs
 new file mode 100644
-index 0000000..fa91e30
+index 0000000..ed220d7
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/CollectionManager/AccessibleCollectionManager.cs
-@@ -0,0 +1,832 @@
+@@ -0,0 +1,856 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using UnityEngine;
@@ -12003,7 +12194,15 @@ index 0000000..fa91e30
 +        {
 +            if (m_curPageCards != null)
 +            {
-+                if (!m_curPageCards.HandleAccessibleInput())
++                if (AccessibleKey.READ_NEXT_PAGE.IsPressed())
++                {
++                    GetCollectionPageManager().m_pageRightClickableRegion.TriggerRelease();
++                }
++                else if (AccessibleKey.READ_PREV_PAGE.IsPressed())
++                {
++                    GetCollectionPageManager().m_pageLeftClickableRegion.TriggerRelease();
++                }
++                else if (!m_curPageCards.HandleAccessibleInput())
 +                {
 +                    if (AccessibleKey.READ_PREV_ITEM.IsPressed())
 +                    {
@@ -12055,12 +12254,8 @@ index 0000000..fa91e30
 +            if (curPageNum != m_curPageNum && (m_curState == State.BROWSING_COLLECTION || m_curState == State.EDIT_DECK_SEE_COLLECTION))
 +            {
 +                AccessibilityMgr.Output(this, LocalizationUtils.Format(LocalizationKey.SCREEN_COLLECTION_MANAGER_COLLECTION_PAGE_NUM, curPageNum));
-+            }
-+            
-+            if (m_curClassContext != classContext && (m_curState == State.BROWSING_COLLECTION || m_curState == State.EDIT_DECK_SEE_COLLECTION))
-+            {
 +                AccessibilityMgr.Output(this, GameStrings.GetClassName(classContext));
-+            } 
++            }
 +
 +            var accessibleCards = new List<AccessibleCollectibleCard>(cardsToDisplay.Count);
 +            cardsToDisplay.ForEach(c => accessibleCards.Add(new AccessibleCollectibleCard(this, c)));
@@ -12186,6 +12381,10 @@ index 0000000..fa91e30
 +                        AccessibleInputMgr.ClickLeftMouseButton();
 +                    }
 +                }
++                else
++                {
++                    HandleEditDeckShortcuts();
++                }
 +            }
 +            else
 +            {
@@ -12193,6 +12392,18 @@ index 0000000..fa91e30
 +                {
 +                    SetupMainMenu();
 +                }
++            }
++        }
++
++        private void HandleEditDeckShortcuts()
++        {
++            if (AccessibleKey.SEE_PLAYER_DECK.IsPressed())
++            {
++                EditDeckSeeDeck();
++            }
++            else if (AccessibleKey.SEE_PLAYER_HAND.IsPressed())
++            {
++                EditDeckAddCards();
 +            }
 +        }
 +
@@ -12212,6 +12423,10 @@ index 0000000..fa91e30
 +                {
 +                    AccessibleInputMgr.ClickLeftMouseButton();
 +                }
++            }
++            else
++            {
++                HandleEditDeckShortcuts();
 +            }
 +        }
 +
@@ -13300,7 +13515,7 @@ index 0000000..9473d38
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 0000000..7b6b5e5
+index 0000000..2916b0b
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -13312,7 +13527,7 @@ index 0000000..7b6b5e5
 +    {
 +        public static string HEARTHSTONE_VERSION = "21.0.3.91040";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "4";
++        public static string HEARTHSTONE_ACCESS_VERSION = "5";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -14121,10 +14336,10 @@ index 0000000..63cbf4b
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizationKey.cs b/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizationKey.cs
 new file mode 100644
-index 0000000..3c8eb65
+index 0000000..a020d3c
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizationKey.cs
-@@ -0,0 +1,782 @@
+@@ -0,0 +1,784 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Linq;
@@ -14421,6 +14636,8 @@ index 0000000..3c8eb65
 +    // Gameplay movements
 +    public static LocalizationKey GAMEPLAY_DIFF_MOVEMENT_PLAYER_EQUIPPED_WEAPON = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_MOVEMENT_PLAYER_EQUIPPED_WEAPON");
 +    public static LocalizationKey GAMEPLAY_DIFF_MOVEMENT_OPPONENT_EQUIPPED_WEAPON = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_MOVEMENT_OPPONENT_EQUIPPED_WEAPON");
++    public static LocalizationKey GAMEPLAY_DIFF_MOVEMENT_PLAYER_HERO_CHANGED = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_MOVEMENT_PLAYER_HERO_CHANGED");
++    public static LocalizationKey GAMEPLAY_DIFF_MOVEMENT_OPPONENT_HERO_CHANGED = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_MOVEMENT_OPPONENT_HERO_CHANGED");
 +    public static LocalizationKey GAMEPLAY_DIFF_MOVEMENT_PLAYER_HERO_POWER_CHANGED = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_MOVEMENT_PLAYER_HERO_POWER_CHANGED");
 +    public static LocalizationKey GAMEPLAY_DIFF_MOVEMENT_OPPONENT_HERO_POWER_CHANGED = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_MOVEMENT_OPPONENT_HERO_POWER_CHANGED");
 +    public static LocalizationKey GAMEPLAY_DIFF_MOVEMENT_ENTITY_RETURNED_TO_PLAYER_HAND = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_MOVEMENT_ENTITY_RETURNED_TO_PLAYER_HAND");
@@ -22755,7 +22972,7 @@ index c946921..adc2731 100644
  		{
  			if (PlatformSettings.IsMobileRuntimeOS && (on ^ m_ANRMonitorOn))
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
-index ed84489..87d699d 100644
+index ed84489..8882f9e 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 @@ -5,6 +5,7 @@ using System.IO;
@@ -22766,16 +22983,14 @@ index ed84489..87d699d 100644
  using Blizzard.BlizzardErrorMobile;
  using Blizzard.T5.Core;
  using Blizzard.T5.Jobs;
-@@ -50,7 +51,11 @@ namespace Hearthstone
- 			iOS = true
+@@ -51,6 +52,10 @@ namespace Hearthstone
  		};
  
--		private static bool s_initializedMode = false;
-+		//private static bool s_initializedMode = false;
-+		private static bool s_initializedMode = true; // Dev mode
+ 		private static bool s_initializedMode = false;
++		//private static bool s_initializedMode = true; // Dev mode
 +
-+		//private static ApplicationMode s_mode = ApplicationMode.PUBLIC;
-+		private static ApplicationMode s_mode = ApplicationMode.INTERNAL; // Dev mode
++		private static ApplicationMode s_mode = ApplicationMode.PUBLIC;
++		//private static ApplicationMode s_mode = ApplicationMode.INTERNAL; // Dev mode
  
  		private static string[] s_cachedCmdLineArgs = null;
  
