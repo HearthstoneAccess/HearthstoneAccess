@@ -1,5 +1,5 @@
 diff --git a/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs b/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
-index 0f54b25..53988ec 100644
+index 0f54b25..e80031b 100644
 --- a/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
 @@ -5,8 +5,9 @@ using Hearthstone.DataModels;
@@ -100,7 +100,7 @@ index 0f54b25..53988ec 100644
 +		var menuTitle = LocalizationUtils.Get(LocalizationKey.SCREEN_ADVENTURE_SCREEN_CHOOSE_ADVENTURER_TITLE);
 +		var accessibleHeroPickerButtons = new AccessibleHorizontalMenu<AccessibleHeroPickerButton>(this, menuTitle, PressBackButton);
 +
-+		var numSupportedBoHHeroes = 3; // Jaina, Rexxar and Garrosh
++		var numSupportedBoHHeroes = 4; // Jaina, Rexxar, Garrosh, Uther
 +
 +		//foreach (var hb in m_heroButtons)
 +		for (var i = 0; i < numSupportedBoHHeroes; i++)
@@ -277,10 +277,10 @@ index 0000000..fbe9535
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibilityMgr.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibilityMgr.cs
 new file mode 100644
-index 0000000..c617756
+index 0000000..66d4939
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibilityMgr.cs
-@@ -0,0 +1,573 @@
+@@ -0,0 +1,582 @@
 +﻿using System;
 +using System.Collections;
 +using System.Collections.Generic;
@@ -462,7 +462,13 @@ index 0000000..c617756
 +            {
 +                var curUI = GetFocusedUI();
 +
-+                if (curUI != null && speaker == curUI)
++                if (speaker == null)
++                {
++                    // Something we haven't made accessible yet so read anyways in case it helps
++                    // Note: this is also useful for tests in some places where a UI doesn't necessarily exist
++                    Output(text, interrupt);
++                }
++                else if (curUI != null && speaker == curUI)
 +                {
 +                    Output(text, interrupt);
 +                }
@@ -473,12 +479,6 @@ index 0000000..c617756
 +                        Output(text, interrupt);
 +                    }
 +                }
-+                else if (speaker == null)
-+                {
-+                    // Something we haven't made accessible yet so read anyways in case it helps
-+                    Output(text, interrupt);
-+                }
-+
 +                // Ignore text from non-focused screens
 +            }
 +            catch (Exception e)
@@ -835,6 +835,15 @@ index 0000000..c617756
 +        internal static void ToggleEnabled()
 +        {
 +            s_enabled = !s_enabled;
++
++            if (s_enabled)
++            {
++                Output(LocalizationUtils.Get(LocalizationKey.GLOBAL_ACCESSIBILITY_ON));
++            }
++            else
++            {
++                Output(LocalizationUtils.Get(LocalizationKey.GLOBAL_ACCESSIBILITY_OFF));
++            }
 +        }
 +
 +        internal static bool IsCurrentlyFocused(AccessibleComponent component)
@@ -1576,10 +1585,10 @@ index 0000000..cdc2bbd
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleCard.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCard.cs
 new file mode 100644
-index 0000000..9e326cc
+index 0000000..2ebe2a9
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCard.cs
-@@ -0,0 +1,540 @@
+@@ -0,0 +1,571 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Text;
@@ -1638,12 +1647,43 @@ index 0000000..9e326cc
 +
 +            if (zone == TAG_ZONE.PLAY)
 +            {
-+                return GetLinesForHeroInPlayZone();
++                if (IsTurnBasedHero())
++                {
++                    // e.g. Some BoH missions which use x turns to hold out instead of attack/health
++                    return GetLinesForTurnBasedHeroInPlayZone();
++                }
++                else
++                {
++                    return GetLinesForHeroInPlayZone();
++                }
 +            }
 +            else
 +            {
 +                return GetLinesForHeroCard();
 +            }
++        }
++
++        private bool IsTurnBasedHero()
++        {
++            if (!GameState.Get().GetGameEntity().IsTurnCounterBasedMission())
++            {
++                return false;
++            }
++
++            return m_card.GetEntity().IsControlledByOpposingSidePlayer();
++        }
++
++        private List<string> GetLinesForTurnBasedHeroInPlayZone()
++        {
++            var lines = new List<string>();
++            lines.Add(GetName());
++
++            var missionEntity = GameState.Get().GetGameEntity() as MissionEntity;
++            lines.Add(missionEntity.GetTurnCounterText());
++
++            lines.Add(m_card.GetEntity().GetEntityDef().GetName());
++
++            return lines;
 +        }
 +
 +        private List<string> GetLinesForHeroInPlayZone()
@@ -2122,10 +2162,10 @@ index 0000000..9e326cc
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleCardUtils.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCardUtils.cs
 new file mode 100644
-index 0000000..84657ac
+index 0000000..538ef29
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCardUtils.cs
-@@ -0,0 +1,120 @@
+@@ -0,0 +1,225 @@
 +﻿using System;
 +using System.Collections.Generic;
 +
@@ -2156,14 +2196,75 @@ index 0000000..84657ac
 +            return GameStrings.GetRarityText(rarity);
 +        }
 +
++        internal static List<string> GetLinesForNormalEntityDef(EntityDef entityDef, TAG_PREMIUM premiumType, string className=null)
++        {
++            var ret = new List<string>();
++
++            ret.Add(GetNameWithPremium(entityDef.GetName(), premiumType)); // Golden/Diamond edition
++
++            if (className != null)
++            {
++                ret.Add(className); // We don't always want to show the class name but it's useful sometimes e.g. pack opening
++            }
++
++            ret.Add(GetCardCost(entityDef.GetCost())); // x mana
++
++            AddLineIfExists(GetResourcesForEntityDef(entityDef), ret); // Resources
++            AddLineIfExists(entityDef.GetCardTextInHand(), ret); // Description
++            AddLineIfExists(entityDef.GetRaceText(), ret); // Race or spell school
++
++            ret.Add(GetType(entityDef.GetCardType())); // Weapon, spell, etc.
++
++            AddLineIfExists(GetRarity(entityDef), ret); // Legendary, elite, etc.
++
++            return ret;
++        }
++
 +        internal static void AddLineIfExists(string line, List<string> lines)
 +        {
-+            if (line.Length == 0)
++            if (line == null || line.Length == 0)
 +            {
 +                return;
 +            }
 +
 +            lines.Add(line);
++        }
++
++        internal static string GetResourcesForEntityDef(EntityDef entityDef)
++        {
++            if (entityDef.GetCardType() == TAG_CARDTYPE.MINION)
++            {
++                return LocalizationUtils.Format(LocalizationKey.READ_CARD_ATK_HEALTH, entityDef.GetATK(), entityDef.GetHealth());
++            } 
++            else if (entityDef.GetCardType() == TAG_CARDTYPE.WEAPON)
++            {
++                return LocalizationUtils.Format(LocalizationKey.READ_CARD_ATK_DURABILITY, entityDef.GetATK(), entityDef.GetDurability());
++            } 
++            else if (entityDef.GetCardType() == TAG_CARDTYPE.HERO)
++            {
++                var atk = entityDef.GetATK();
++                var hp = entityDef.GetHealth();
++                var armor = entityDef.GetArmor();
++
++                var stats = new List<string>();
++
++                if (atk > 0)
++                {
++                    stats.Add(LocalizationUtils.Format(LocalizationKey.READ_HERO_CARD_ATK, atk));
++                }
++                if (armor > 0)
++                {
++                    stats.Add(LocalizationUtils.Format(LocalizationKey.READ_HERO_CARD_ARMOR, armor));
++                }
++
++                stats.Add(LocalizationUtils.Format(LocalizationKey.READ_HERO_CARD_HEALTH, hp));
++
++                return AccessibleSpeechUtils.HumanizeList(stats);
++            }
++            else
++            {
++                return "";
++            }
 +        }
 +
 +        public static List<string> GetHeroPowerCardLinesForHeroCard(string heroCardId)
@@ -2244,6 +2345,50 @@ index 0000000..84657ac
 +        {
 +            return QuestController.GetRewardCardIDFromQuestCardID(entity);
 +        }
++
++        internal static string GetNameWithPremium(string name, TAG_PREMIUM premiumType)
++        {
++            switch (premiumType)
++            {
++                case TAG_PREMIUM.GOLDEN:
++                    return LocalizationUtils.Format(LocalizationKey.READ_COLLECTION_CARD_NAME_GOLDEN, name);
++                case TAG_PREMIUM.DIAMOND:
++                    return LocalizationUtils.Format(LocalizationKey.READ_COLLECTION_CARD_NAME_DIAMOND, name);
++                default:
++                    return name;
++            }
++        }
++
++        internal static string GetCardCost(int cost)
++        {
++            return LocalizationUtils.Format(LocalizationKey.READ_CARD_COST, cost);
++        }
++
++        internal static string GetCardPackName(int packId)
++        {
++            BoosterDbfRecord record = GameDbf.Booster.GetRecord(packId);
++
++            if (record == null)
++            {
++                return null;
++            }
++
++            var name = record.Name?.GetString();
++
++            if (name == null || name.Length == 0)
++            {
++                if (record.NoteDesc != null && record.NoteDesc.Length > 0)
++                {
++                    // e.g. standard warrior pack from BoH Garrosh
++                    return record.NoteDesc;
++                }
++
++                return null;
++            }
++
++            return name;
++        }
++
 +    }
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleCheckBox.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCheckBox.cs
@@ -2288,10 +2433,10 @@ index 0000000..926fe77
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleCollectibleCard.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCollectibleCard.cs
 new file mode 100644
-index 0000000..482a959
+index 0000000..0483f46
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCollectibleCard.cs
-@@ -0,0 +1,255 @@
+@@ -0,0 +1,183 @@
 +﻿using System;
 +using System.Collections.Generic;
 +
@@ -2330,7 +2475,6 @@ index 0000000..482a959
 +                case TAG_CARDTYPE.HERO_POWER:
 +                    return GetLinesForHeroPower();
 +                case TAG_CARDTYPE.WEAPON:
-+                    return GetLinesForWeapon();
 +                case TAG_CARDTYPE.ENCHANTMENT:
 +                case TAG_CARDTYPE.MINION:
 +                case TAG_CARDTYPE.SPELL:
@@ -2409,36 +2553,10 @@ index 0000000..482a959
 +            return lines;
 +        }
 +
-+        private List<string> GetLinesForWeapon()
-+        {
-+            var lines = new List<string>();
-+            lines.Add(GetName());
-+            lines.Add(GetCost());
-+
-+            AccessibleCardUtils.AddLineIfExists(GetResources(), lines);
-+            AccessibleCardUtils.AddLineIfExists(GetDescription(), lines);
-+
-+            lines.Add(GetType());
-+
-+            AccessibleCardUtils.AddLineIfExists(GetRarity(), lines);
-+            AccessibleCardUtils.AddLineIfExists(GetCardCount(), lines);
-+
-+            return lines;
-+        }
-+
 +        private List<string> GetLinesForNormalCard()
 +        {
-+            var lines = new List<string>();
-+            lines.Add(GetName());
-+            lines.Add(GetCost());
++            var lines = AccessibleCardUtils.GetLinesForNormalEntityDef(m_card.GetEntityDef(), m_card.PremiumType);
 +
-+            AccessibleCardUtils.AddLineIfExists(GetResources(), lines);
-+            AccessibleCardUtils.AddLineIfExists(GetDescription(), lines);
-+            AccessibleCardUtils.AddLineIfExists(GetRace(), lines); // Handles spell school as well
-+
-+            lines.Add(GetType());
-+
-+            AccessibleCardUtils.AddLineIfExists(GetRarity(), lines);
 +            AccessibleCardUtils.AddLineIfExists(GetCardCount(), lines);
 +
 +            return lines;
@@ -2461,8 +2579,7 @@ index 0000000..482a959
 +
 +        private string GetCost()
 +        {
-+            int cost = m_card.ManaCost;
-+            return LocalizationUtils.Format(LocalizationKey.READ_CARD_COST, cost);
++            return AccessibleCardUtils.GetCardCost(m_card.ManaCost);
 +        }
 +
 +        private string GetCardCount()
@@ -2494,56 +2611,12 @@ index 0000000..482a959
 +
 +        private string GetResources()
 +        {
-+            if (m_card.CardType == TAG_CARDTYPE.MINION) {
-+                return LocalizationUtils.Format(LocalizationKey.READ_CARD_ATK_HEALTH, m_card.Attack, m_card.Health);
-+            } 
-+            else if (m_card.CardType == TAG_CARDTYPE.WEAPON) {
-+                return LocalizationUtils.Format(LocalizationKey.READ_CARD_ATK_DURABILITY, m_card.Attack, m_card.GetEntityDef().GetDurability());
-+            } 
-+            else if (m_card.CardType == TAG_CARDTYPE.HERO)
-+            {
-+                var atk = m_card.Attack;
-+                var hp = m_card.Health;
-+                var armor = m_card.GetEntityDef().GetArmor();
-+
-+                var stats = new List<string>();
-+
-+                if (atk > 0)
-+                {
-+                    stats.Add(LocalizationUtils.Format(LocalizationKey.READ_HERO_CARD_ATK, atk));
-+                }
-+                if (armor > 0)
-+                {
-+                    stats.Add(LocalizationUtils.Format(LocalizationKey.READ_HERO_CARD_ARMOR, armor));
-+                }
-+
-+                stats.Add(LocalizationUtils.Format(LocalizationKey.READ_HERO_CARD_HEALTH, hp));
-+
-+                return AccessibleSpeechUtils.HumanizeList(stats);
-+            }
-+            else
-+            {
-+                return "";
-+            }
-+        }
-+
-+        private string GetRace()
-+        {
-+            // Note: This handles spell school as well
-+            return m_card.GetEntityDef().GetRaceText();
++            return AccessibleCardUtils.GetResourcesForEntityDef(m_card.GetEntityDef());
 +        }
 +
 +        internal string GetName()
 +        {
-+            switch (m_card.PremiumType)
-+            {
-+                case TAG_PREMIUM.GOLDEN:
-+                    return LocalizationUtils.Format(LocalizationKey.READ_COLLECTION_CARD_NAME_GOLDEN, m_card.Name);
-+                case TAG_PREMIUM.DIAMOND:
-+                    return LocalizationUtils.Format(LocalizationKey.READ_COLLECTION_CARD_NAME_DIAMOND, m_card.Name);
-+                default:
-+                    return m_card.Name;
-+            }
++            return AccessibleCardUtils.GetNameWithPremium(m_card.Name, m_card.PremiumType);
 +        }
 +    }
 +}
@@ -2878,10 +2951,10 @@ index 0000000..9259009
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleGameplay.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleGameplay.cs
 new file mode 100644
-index 0000000..981d405
+index 0000000..622cc91
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleGameplay.cs
-@@ -0,0 +1,2141 @@
+@@ -0,0 +1,2257 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Text;
@@ -2911,6 +2984,7 @@ index 0000000..981d405
 +            CHOICE_MODE,
 +            SUMMONING_MINION,
 +            PLAYING_CARD,
++            TRADING_CARD,
 +            CONFIRMING_END_TURN,
 +            BROWSING_HISTORY,
 +            ALL_MINIONS_TO_FACE
@@ -2957,6 +3031,9 @@ index 0000000..981d405
 +        private bool m_waitingForMulliganReplacementCards;
 +
 +        private static bool m_justReconnected;
++
++        private bool m_tradingCard;
++        private bool m_tradingCardWaitingForHold; // Used to prevent "Summon?" or "Play?" when a card is traded straight from hand but we still need to wait for it to be held
 +
 +        public void OnTurnStart()
 +        {
@@ -3071,6 +3148,8 @@ index 0000000..981d405
 +            m_summoningMinionListeners.Clear();
 +            m_stopHidingMouse = false;
 +            m_waitingForMulliganReplacementCards = false;
++            m_tradingCard = false;
++            m_tradingCardWaitingForHold = false;
 +            AccessibleHistoryMgr.Get().Reset();
 +        }
 +
@@ -3261,6 +3340,11 @@ index 0000000..981d405
 +                HandleAllMinionsToFace();
 +                return;
 +            }
++            else if (m_curState == AccessibleGameState.TRADING_CARD)
++            {
++                HandleTradingCard();
++                return;
++            }
 +
 +            try
 +            {
@@ -3319,11 +3403,13 @@ index 0000000..981d405
 +                    HandleCardReadingInput();
 +                    HandleCheckStatusKeys();
 +                    HandleSummoningMinion();
++                    HandleTradeCardWhenHoldingCardInput();
 +                    return;
 +                case AccessibleGameState.PLAYING_CARD:
 +                    HandleCardReadingInput();
 +                    HandleCheckStatusKeys();
 +                    HandlePlayingCard();
++                    HandleTradeCardWhenHoldingCardInput();
 +                    return;
 +                case AccessibleGameState.BROWSING_HISTORY:
 +                    HandleHistoryInput();
@@ -3402,6 +3488,30 @@ index 0000000..981d405
 +            {
 +                AccessibleInputMgr.HideMouse();
 +            }
++        }
++
++        private void HandleTradeCardWhenHoldingCardInput()
++        {
++            if (AccessibleKey.TRADE_CARD.IsPressed() && CanTradeCard(m_heldCard))
++            {
++                QueryTradeCard();
++            }
++        }
++
++        private void QueryTradeCard()
++        {
++            m_tradingCard = true;
++            AccessibilityMgr.Output(this, LocalizationUtils.Get(LocalizationKey.GAMEPLAY_QUERY_TRADE_CARD));
++        }
++
++        private bool CanTradeCard(Card card)
++        {
++            if (card == null || card.GetZone() != GameState.Get().GetFriendlySidePlayer().GetHandZone())
++            {
++                return false;
++            }
++
++            return card.GetEntity().IsTradeable();
 +        }
 +
 +        private int m_summonPos;
@@ -3527,6 +3637,21 @@ index 0000000..981d405
 +            }
 +        }
 +
++        private void HandleTradingCard()
++        {
++            Collider collider = Board.Get().GetTradeArea();
++            if (collider != null)
++            {
++                var cardBounds = m_heldCard.GetActor().GetMeshRenderer().bounds;
++                Vector3 tradeAreaCenter = collider.bounds.ClosestPoint(m_heldCard.gameObject.transform.position);
++                Vector3 target = tradeAreaCenter;
++                target.x += cardBounds.size.x / 2;
++                AccessibleInputMgr.MoveMouseToWorldPosition(target);
++            }
++
++            HandleConfirmOrCancel();
++        }
++
 +        private bool RequiresTarget(Card heldCard)
 +        {
 +            return GameState.Get().EntityHasTargets(heldCard.GetEntity());
@@ -3619,6 +3744,11 @@ index 0000000..981d405
 +            if (AccessibleKey.CONFIRM.IsPressed())
 +            {
 +                ClickCard();
++            }
++            else if (AccessibleKey.TRADE_CARD.IsPressed() && m_cardBeingRead != null && CanTradeCard(m_cardBeingRead.GetCard()))
++            {
++                QueryTradeCard();
++                ClickCard(true);
 +            }
 +        }
 +
@@ -3786,6 +3916,17 @@ index 0000000..981d405
 +                m_accessibleChoiceCards = null;
 +            }
 +
++            if (m_heldCard == null)
++            {
++                m_tradingCard = false;
++            }
++            else if (m_tradingCardWaitingForHold && CanTradeCard(m_heldCard))
++            {
++                // Additional check via CanTradeCard to prevent potential race conditions around turns ending in-between trades/selections
++                m_tradingCardWaitingForHold = false;
++                m_tradingCard = true;
++            }
++
 +            m_prevState = m_curState;
 +            m_prevResponseMode = m_curResponseMode;
 +            m_curResponseMode = GameState.Get().GetResponseMode();
@@ -3798,6 +3939,10 @@ index 0000000..981d405
 +            else if (m_sendingAllMinionsToFace)
 +            {
 +                m_curState = AccessibleGameState.ALL_MINIONS_TO_FACE;
++            }
++            else if (m_tradingCard)
++            {
++                m_curState = AccessibleGameState.TRADING_CARD;
 +            }
 +            else if (m_confirmingEndTurn)
 +            {
@@ -3955,7 +4100,34 @@ index 0000000..981d405
 +                return;
 +            }
 +
-+            m_cardBeingRead.HandleAccessibleInput();
++            if (AccessibleKey.READ_ORIGINAL_CARD_STATS.IsPressed() && m_cardBeingRead.GetCard().GetEntity().IsMinion())
++            {
++                var atk = m_cardBeingRead.GetCard().GetEntity().GetEntityDef().GetATK();
++                var hp = m_cardBeingRead.GetCard().GetEntity().GetEntityDef().GetHealth();
++
++                AccessibilityMgr.Output(this, LocalizationUtils.Format(LocalizationKey.READ_CARD_ATK_HEALTH, atk, hp));
++
++                ReadBigCard();
++            }
++            else
++            {
++                m_cardBeingRead.HandleAccessibleInput();
++            }
++        }
++
++        private void ReadBigCard()
++        {
++            var bigCard = BigCard.Get();
++            if (bigCard != null && bigCard.GetCard() != null && bigCard.isActiveAndEnabled)
++            {
++                var enchantments = bigCard.m_enchantmentPool.GetActiveList();
++                foreach (var enchantment in enchantments)
++                {
++                    AccessibilityMgr.Output(this, LocalizedText.GLOBAL_ENCHANTMENT);
++                    AccessibilityMgr.Output(this, enchantment.m_HeaderText.Text);
++                    AccessibilityMgr.Output(this, enchantment.m_BodyText.Text);
++                }
++            }
 +        }
 +
 +        private void SeeOpponentMinions()
@@ -4077,11 +4249,16 @@ index 0000000..981d405
 +            }
 +        }
 +
-+        private void ClickCard()
++        private void ClickCard(bool tradingCard=false)
 +        {
 +            if (m_cardBeingRead == null)
 +            {
 +                return;
++            }
++
++            if (tradingCard)
++            {
++                m_tradingCardWaitingForHold = true;
 +            }
 +
 +            AccessibleInputMgr.ClickLeftMouseButton();
@@ -4674,6 +4851,8 @@ index 0000000..981d405
 +                    return GetConfirmingEndTurnHelp();
 +                case AccessibleGameState.BROWSING_HISTORY:
 +                    return GetBrowsingHistoryHelp();
++                case AccessibleGameState.TRADING_CARD:
++                    return GetTradingCardHelp();
 +                default:
 +                    return "";
 +            }
@@ -4707,6 +4886,11 @@ index 0000000..981d405
 +        private string GetPlayingCardHelp()
 +        {
 +            return GetOrNarrateHelpSpeech(AccessibleSpeech.GAMEPLAY_PLAY_CARD_HELP);
++        }
++
++        private string GetTradingCardHelp()
++        {
++            return GetOrNarrateHelpSpeech(AccessibleSpeech.TUTORIAL_HOGGER_2_5);
 +        }
 +
 +        private string GetSummoningMinionHelp()
@@ -4871,6 +5055,11 @@ index 0000000..981d405
 +                if (card.GetZone() == playerHand)
 +                {
 +                    speeches.Add(AccessibleSpeech.GAMEPLAY_PLAY_CARD_HELP);
++
++                    if (card.GetEntity().IsTradeable())
++                    {
++                        speeches.Add(AccessibleSpeech.GAMEPLAY_TRADE_CARD_HELP);
++                    }
 +                }
 +                else if (card.GetZone() == playerBattlefield)
 +                {
@@ -5485,10 +5674,10 @@ index 0000000..5f92ec0
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleHub.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleHub.cs
 new file mode 100644
-index 0000000..9b720f5
+index 0000000..71140ba
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleHub.cs
-@@ -0,0 +1,95 @@
+@@ -0,0 +1,109 @@
 +﻿using System;
 +
 +namespace Accessibility
@@ -5528,6 +5717,7 @@ index 0000000..9b720f5
 +
 +            m_mainMenu.AddOption(LocalizedText.HUB_GAME_MODES_OPTION, OnClickModes);
 +            m_mainMenu.AddOption(LocalizedText.HUB_MY_COLLECTION_OPTION, OnClickMyCollection);
++            m_mainMenu.AddOption($"{LocalizationUtils.Get(LocalizationKey.GLOBAL_OPEN_PACKS)} {Box.Get().m_OpenPacksButton.m_count.Text}", OnClickOpenPacks);
 +            m_mainMenu.AddOption(LocalizedText.HUB_HELP_OPTION, OnClickHelp);
 +            m_mainMenu.AddOption(LocalizedText.GAME_MENU_TITLE, OnClickGameMenu);
 +
@@ -5552,6 +5742,19 @@ index 0000000..9b720f5
 +        private void OnClickMyCollection()
 +        {
 +            Box.Get().m_CollectionButton.TriggerRelease();
++        }
++
++        private void OnClickOpenPacks()
++        {
++            var openPacksButton = Box.Get().m_OpenPacksButton;
++            if (openPacksButton.m_numPacks < 1)
++            {
++                AccessibilityMgr.Output(this, LocalizationUtils.Get(LocalizationKey.SCREEN_PACK_OPENING_NO_CARD_PACKS));
++            }
++            else
++            {
++                Box.Get().m_OpenPacksButton.TriggerRelease();
++            }
 +        }
 +
 +        public void HandleInput()
@@ -5586,10 +5789,10 @@ index 0000000..9b720f5
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleInGameState.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleInGameState.cs
 new file mode 100644
-index 0000000..2de05f3
+index 0000000..d48b81a
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleInGameState.cs
-@@ -0,0 +1,2046 @@
+@@ -0,0 +1,2051 @@
 +﻿using Assets;
 +using System;
 +using System.Collections.Generic;
@@ -5869,7 +6072,12 @@ index 0000000..2de05f3
 +
 +            private bool HasTransformed(Entity before, Entity after)
 +            {
-+                return !MovedZone() && !HasRevealed(before, after) && !m_after.GetName().Equals(m_before.GetName());
++                if (m_died || m_before.GetZone() != m_after.GetZone())
++                {
++                    return false;
++                }
++
++                return !HasRevealed(before, after) && !m_after.GetName().Equals(m_before.GetName());
 +            }
 +
 +            private bool HasRevealed(Entity before, Entity after)
@@ -7638,10 +7846,10 @@ index 0000000..2de05f3
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleInputMgr.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleInputMgr.cs
 new file mode 100644
-index 0000000..541cb10
+index 0000000..8eb7d99
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleInputMgr.cs
-@@ -0,0 +1,192 @@
+@@ -0,0 +1,198 @@
 +﻿using System;
 +using System.Collections;
 +using System.Collections.Generic;
@@ -7670,8 +7878,7 @@ index 0000000..541cb10
 +
 +            if (AccessibleKey.TOGGLE_ACCESSIBILITY.IsPressed())
 +            {
-+                AccessibleUnityInput.Get().ToggleEnabled();
-+                AccessibilityMgr.ToggleEnabled();
++                ToggleAccessibility();
 +            }
 +
 +            // Debug stuff
@@ -7680,6 +7887,12 @@ index 0000000..541cb10
 +                Vector3 dbgMousePos = Input.mousePosition;
 +                AccessibilityUtils.LogDebug($"[DBG] Mouse position is {dbgMousePos}");
 +            }
++        }
++
++        private void ToggleAccessibility()
++        {
++            AccessibleUnityInput.Get().ToggleEnabled();
++            AccessibilityMgr.ToggleEnabled();
 +        }
 +
 +        private static void ClickLeftMouseButtonImpl()
@@ -7711,6 +7924,7 @@ index 0000000..541cb10
 +
 +        private static void SetMousePosition(Vector3 pos)
 +        {
++            //AccessibilityUtils.LogDebug($"SetMousePosition{pos}");
 +            m_setMousePosition = pos;
 +        }
 +
@@ -8014,10 +8228,10 @@ index 0000000..1ea10f3
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleKey.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleKey.cs
 new file mode 100644
-index 0000000..5b365a3
+index 0000000..bc6eb06
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleKey.cs
-@@ -0,0 +1,276 @@
+@@ -0,0 +1,302 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using UnityEngine;
@@ -8046,6 +8260,7 @@ index 0000000..5b365a3
 +        public static AccessibleKey READ_NEXT_PAGE = CreateKey(KeyCode.PageDown);
 +        public static AccessibleKey READ_PREV_PAGE = CreateKey(KeyCode.PageUp);
 +        public static AccessibleKey SKIP_NOTIFICATION = CreateKey(KeyCode.Space);
++        public static AccessibleKey SPACE = CreateKey(KeyCode.Space);
 +
 +        public static AccessibleKey DECREASE_GAME_SPEED = CreateKey(KeyCode.F11);
 +        public static AccessibleKey INCREASE_GAME_SPEED = CreateKey(KeyCode.F12);
@@ -8099,6 +8314,8 @@ index 0000000..5b365a3
 +        public static AccessibleKey END_TURN = CreateKey(KeyCode.E);
 +        public static AccessibleKey FORCE_END_TURN = CreateKey(KeyCode.E, true);
 +        public static AccessibleKey READ_TOOLTIP = CreateKey(KeyCode.I);
++        public static AccessibleKey READ_ORIGINAL_CARD_STATS = CreateKey(KeyCode.K);
++        public static AccessibleKey TRADE_CARD = CreateKey(KeyCode.T);
 +        #endregion
 +
 +        private bool m_requiresModifier;
@@ -8116,9 +8333,21 @@ index 0000000..5b365a3
 +
 +        public bool IsPressed()
 +        {
++            var ret = IsPressedInternal();
++
++            if (ret)
++            {
++                AccessibilityUtils.LogDebug($"Pressed key: {m_keyCode}");
++            }
++
++            return ret;
++        }
++
++        private bool IsPressedInternal()
++        {
 +            if (!m_enabled)
 +            {
-+                if (Input.GetKeyUp(m_keyCode))
++                if (IsKeyUp(m_keyCode))
 +                {
 +                    AccessibilityUtils.LogDebug($"ZYY Tried to press {m_keyCode} but it was disabled");
 +                }
@@ -8127,12 +8356,23 @@ index 0000000..5b365a3
 +
 +            if (m_requiresModifier)
 +            {
-+                return IsHoldingModifier() && Input.GetKeyUp(m_keyCode);
++                return IsHoldingModifier() && IsKeyUp(m_keyCode);
 +            }
 +            else
 +            {
-+                return !IsHoldingModifier() && Input.GetKeyUp(m_keyCode);
++                return !IsHoldingModifier() && IsKeyUp(m_keyCode);
 +            }
++        }
++
++        private bool IsKeyUp(KeyCode keyCode)
++        {
++            if (keyCode == KeyCode.Return && Input.GetKeyUp(KeyCode.KeypadEnter))
++            {
++                // Quick fix as some players asked for this
++                return true;
++            }
++
++            return Input.GetKeyUp(keyCode);
 +        }
 +
 +        public bool IsDown()
@@ -8797,10 +9037,10 @@ index 0000000..a2fd21e
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessiblePlayDescriber.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessiblePlayDescriber.cs
 new file mode 100644
-index 0000000..2023df0
+index 0000000..ac3a7f8
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessiblePlayDescriber.cs
-@@ -0,0 +1,447 @@
+@@ -0,0 +1,522 @@
 +﻿using Assets;
 +using System;
 +using System.Collections.Generic;
@@ -8866,7 +9106,7 @@ index 0000000..2023df0
 +
 +            m_describedTaskLists.Add(taskList);
 +
-+            if (PowerProcessor.ShouldShowTriggeredBigCard(card))
++            if (ShouldShowTriggeredBigCard(card, taskList))
 +            {
 +                return GetBigCardTriggeredText(card);
 +            }
@@ -8881,6 +9121,28 @@ index 0000000..2023df0
 +            // Not really a play but the card itself may be useful if the player wants to read it
 +            var play = LocalizationUtils.Format(LocalizationKey.GAMEPLAY_CARD_IN_ZONE_TRIGGERED, fullCardName);
 +            return RegisterPlay(play);
++        }
++
++        private bool ShouldShowTriggeredBigCard(Entity card, PowerTaskList taskList)
++        {
++            if (PowerProcessor.ShouldShowTriggeredBigCard(card))
++            {
++                return true;
++            }
++
++            if (card.IsControlledByOpposingSidePlayer())
++            {
++                // e.g. Baku the Mooneater
++                foreach (var task in taskList.GetTaskList())
++                {
++                    if (task.IsShowStartOfGameCard())
++                    {
++                        return true;
++                    }
++                }
++            }
++
++            return false;
 +        }
 +
 +        internal string OnCardPlayed(PowerTaskList taskList)
@@ -8899,7 +9161,7 @@ index 0000000..2023df0
 +
 +            if (PowerProcessor.ShouldShowPlayedBigCard(card, blockStart))
 +            {
-+                var text = GetBigCardPlayedText(card);
++                var text = GetBigCardPlayedText(card, taskList);
 +
 +                if (text.Length > 0)
 +                {
@@ -8911,7 +9173,18 @@ index 0000000..2023df0
 +            var cardName = card.GetName();
 +            string play;
 +
-+            if (card.IsMinion())
++            if (IsCardTrade(taskList))
++            {
++                if (isFriendlySide)
++                {
++                    play = LocalizationUtils.Format(LocalizationKey.GAMEPLAY_PLAYER_TRADED_CARD, cardName);
++                }
++                else
++                {
++                    play = LocalizationUtils.Format(LocalizationKey.GAMEPLAY_OPPONENT_TRADED_CARD, cardName);
++                }
++            }
++            else if (card.IsMinion())
 +            {
 +                if (isFriendlySide)
 +                {
@@ -8972,14 +9245,56 @@ index 0000000..2023df0
 +            return RegisterPlay(play);
 +        }
 +
-+        private string GetBigCardPlayedText(Entity card)
++        private bool IsCardTrade(PowerTaskList taskList)
++        {
++            if (taskList == null || !taskList.IsOrigin() || !taskList.IsPlayBlock())
++            {
++                return false;
++            }
++
++            var source = taskList.GetSourceEntity();
++            var target = taskList.GetTargetEntity();
++
++            if (source == null || target == null)
++            {
++                return false;
++            }
++
++            if (source.GetEntityId() != target.GetEntityId())
++            {
++                return false;
++            }
++
++            foreach (var task in taskList.GetTaskList())
++            {
++                if (task.IsCardTrade(source.GetEntityId()))
++                {
++                    return true;
++                }
++            }
++
++            return false;
++        }
++
++        private string GetBigCardPlayedText(Entity card, PowerTaskList taskList)
 +        {
 +            var cardName = card.GetName();
 +            var cardText = card.GetCardTextBuilder().BuildCardTextInHand(card);
 +            var isFriendlySide = card.IsControlledByFriendlySidePlayer();
 +            string play;
 +
-+            if (card.IsMinion())
++            if (IsCardTrade(taskList))
++            {
++                if (isFriendlySide)
++                {
++                    play = LocalizationUtils.Format(LocalizationKey.GAMEPLAY_PLAYER_TRADED_CARD, cardName);
++                }
++                else
++                {
++                    play = LocalizationUtils.Format(LocalizationKey.GAMEPLAY_OPPONENT_TRADED_CARD, cardName);
++                }
++            }
++            else if (card.IsMinion())
 +            {
 +                var atk = card.GetATK();
 +                var hp = card.GetHealth();
@@ -9086,7 +9401,7 @@ index 0000000..2023df0
 +        {
 +            if (taskList == null)
 +            {
-+                AccessibilityUtils.LogDebug($"OnBigCardPlayed called with null taskList - dropping");
++                AccessibilityUtils.LogDebug($"OnBigCardPlayed called with null taskList");
 +            }
 +
 +            if (card == null || m_describedTaskLists.Contains(taskList))
@@ -9094,7 +9409,7 @@ index 0000000..2023df0
 +                return;
 +            }
 +
-+            var text = GetBigCardPlayedText(card);
++            var text = GetBigCardPlayedText(card, taskList);
 +
 +            if (text.Length == 0)
 +            {
@@ -9250,10 +9565,10 @@ index 0000000..2023df0
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessiblePowerTaskListDescriber.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessiblePowerTaskListDescriber.cs
 new file mode 100644
-index 0000000..3cb1ab4
+index 0000000..a946f24
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessiblePowerTaskListDescriber.cs
-@@ -0,0 +1,455 @@
+@@ -0,0 +1,456 @@
 +﻿using PegasusGame;
 +using System;
 +using System.Collections.Generic;
@@ -9497,8 +9812,9 @@ index 0000000..3cb1ab4
 +                AccessibilityUtils.LogDebug($"PTL SnapshotAndDescribeGameState D6");
 +                s_canSnapshot = true;
 +
-+                if (GameState.Get().IsFriendlySidePlayerTurn())
++                if (GameState.Get().IsFriendlySidePlayerTurn() && !s_turnStarted)
 +                {
++                    // Start of game card (e.g. C'Thun) trigger during the mulligan and the banner comes first
 +                    s_waitingForYourTurnBanner = true;
 +                }
 +            }
@@ -9931,10 +10247,10 @@ index 0000000..040d6fc
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleRewardData.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleRewardData.cs
 new file mode 100644
-index 0000000..1e4c68e
+index 0000000..69c6d17
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleRewardData.cs
-@@ -0,0 +1,231 @@
+@@ -0,0 +1,234 @@
 +﻿using Assets;
 +using System;
 +using System.Collections.Generic;
@@ -10079,6 +10395,9 @@ index 0000000..1e4c68e
 +            var numPacks = reward.Count;
 +
 +            ret.Add(LocalizationUtils.Format(LocalizationKey.UI_REWARD_N_CARD_PACKS, numPacks));
++
++            AccessibleCardUtils.AddLineIfExists(AccessibleCardUtils.GetCardPackName(reward.Id), ret);
++
 +            return ret;
 +        }
 +
@@ -10168,10 +10487,10 @@ index 0000000..1e4c68e
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleRewardItemDataModel.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleRewardItemDataModel.cs
 new file mode 100644
-index 0000000..21c0fa9
+index 0000000..11ae726
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleRewardItemDataModel.cs
-@@ -0,0 +1,106 @@
+@@ -0,0 +1,117 @@
 +﻿using Assets;
 +using Hearthstone.DataModels;
 +using System;
@@ -10206,7 +10525,7 @@ index 0000000..21c0fa9
 +            {
 +                case RewardItemType.BOOSTER:
 +                    //return AsList($"{m_reward.Quantity} {m_reward.Booster.BoosterName} card pack{suffix}"); Would be hard to localize
-+                    return AsList(LocalizationUtils.Format(LocalizationKey.UI_REWARD_N_CARD_PACKS, m_reward.Quantity));
++                    return GetLinesForCardPackReward();
 +                case RewardItemType.DUST:
 +                    return AsList(LocalizationUtils.Format(LocalizationKey.UI_REWARD_N_ARCANE_DUST, m_reward.Quantity));
 +                case RewardItemType.HERO_SKIN:
@@ -10254,6 +10573,17 @@ index 0000000..21c0fa9
 +                    ret.Add(LocalizationUtils.Get(LocalizationKey.UI_REWARD_TYPE_UNKNOWN));
 +                    return ret;
 +            }
++        }
++
++        private List<string> GetLinesForCardPackReward()
++        {
++            var ret = new List<string>();
++
++            ret.Add(LocalizationUtils.Format(LocalizationKey.UI_REWARD_N_CARD_PACKS, m_reward.Quantity));
++
++            AccessibleCardUtils.AddLineIfExists(AccessibleCardUtils.GetCardPackName((int)m_reward.Booster.Type), ret);
++
++            return ret;
 +        }
 +
 +        private List<string> GetLinesForCardReward()
@@ -10393,10 +10723,10 @@ index 0000000..aa0cd2f
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleSpeech.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleSpeech.cs
 new file mode 100644
-index 0000000..db84f90
+index 0000000..e117d6b
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleSpeech.cs
-@@ -0,0 +1,318 @@
+@@ -0,0 +1,319 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Runtime.CompilerServices;
@@ -10473,6 +10803,7 @@ index 0000000..db84f90
 +        public static HSASpeech GAMEPLAY_READ_CARD_HELP = CreateSpeech(L10N.Of(LocalizationKey.GAMEPLAY_READ_CARD_HELP), "Use the up and down arrow keys to read this card");
 +        public static HSASpeech GAMEPLAY_READ_CARD_TOOLTIP_HELP = CreateSpeech(L10N.Of(LocalizationKey.GAMEPLAY_READ_CARD_TOOLTIP_HELP, AccessibleKey.READ_TOOLTIP), $"Press {AccessibleKey.READ_TOOLTIP.ToEnglishString()} to get a description of this card's abilities");
 +        public static HSASpeech GAMEPLAY_PLAY_CARD_HELP = CreateSpeech(L10N.Of(LocalizationKey.GAMEPLAY_PLAY_CARD_HELP, AccessibleKey.CONFIRM), $"Press {AccessibleKey.CONFIRM.ToEnglishString()} to play this card");
++        public static HSASpeech GAMEPLAY_TRADE_CARD_HELP = CreateSpeech(L10N.Of(LocalizationKey.GAMEPLAY_TRADE_CARD_HELP, AccessibleKey.TRADE_CARD), $"Press {AccessibleKey.TRADE_CARD.ToEnglishString()} to trade this card");
 +        public static HSASpeech GAMEPLAY_SUMMON_MINION_HELP = CreateSpeech(L10N.Of(LocalizationKey.GAMEPLAY_SUMMON_MINION_HELP, AccessibleKey.CONFIRM), $"Press {AccessibleKey.CONFIRM.ToEnglishString()} to summon this minion");
 +        public static HSASpeech GAMEPLAY_CHOICE_MODE_HELP = CreateSpeech(L10N.Of(LocalizationKey.GAMEPLAY_CHOICE_MODE_HELP, AccessibleKey.CONFIRM), $"Use the arrow keys to go through your options. Press {AccessibleKey.CONFIRM.ToEnglishString()} to choose one");
 +        public static HSASpeech GAMEPLAY_CHOOSE_TARGET_HELP = CreateSpeech(L10N.Of(LocalizationKey.GAMEPLAY_CHOOSE_TARGET_HELP, AccessibleKey.READ_NEXT_VALID_ITEM, AccessibleKey.CONFIRM, AccessibleKey.BACK), $"Use {AccessibleKey.READ_NEXT_VALID_ITEM.ToEnglishString()} or the Zone keys to go through your targets. Press {AccessibleKey.CONFIRM.ToEnglishString()} to choose a target or {AccessibleKey.BACK.ToEnglishString()} to cancel");
@@ -13976,7 +14307,7 @@ index 0000000..9473d38
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 0000000..3414ad6
+index 0000000..12b7361
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -13988,7 +14319,7 @@ index 0000000..3414ad6
 +    {
 +        public static string HEARTHSTONE_VERSION = "21.2.0.91456";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "7";
++        public static string HEARTHSTONE_ACCESS_VERSION = "8";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -14014,10 +14345,10 @@ index 0000000..3414ad6
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/InGameSystemTests.cs b/Decompiled/Assembly-CSharp/Accessibility/InGameSystemTests.cs
 new file mode 100644
-index 0000000..b86a87e
+index 0000000..3b92c94
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/InGameSystemTests.cs
-@@ -0,0 +1,245 @@
+@@ -0,0 +1,284 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Globalization;
@@ -14105,6 +14436,8 @@ index 0000000..b86a87e
 +
 +        internal static void TestCardEffectInterpreter()
 +        {
++            AccessibilityMgr.Output(null, "Testing card effects interpreter");
++
 +            var allCards = CollectionManager.Get().GetAllCards(); // TODO: We probably should include hero powers here as well..
 +            AccessibilityUtils.LogDebug($"Testing {allCards.Count} cards");
 +
@@ -14132,6 +14465,9 @@ index 0000000..b86a87e
 +            AccessibilityUtils.LogDebug($"#OK: {okCount}");
 +            AccessibilityUtils.LogDebug($"#FAIL: {failCount}");
 +            AccessibilityUtils.LogDebug($"#TOTAL: {okCount + failCount}");
++
++            AccessibilityMgr.Output(null, $"OK count: {okCount}");
++            AccessibilityMgr.Output(null, $"Fail count: {failCount}");
 +        }
 +
 +        private static bool IsBattlecryMinion(CollectibleCard card)
@@ -14157,6 +14493,9 @@ index 0000000..b86a87e
 +        // Used to test any localization we get from Blizzard to ensure TTS doesn't break in HS updates
 +        internal static void TestLocalization()
 +        {
++            AccessibilityMgr.Output(null, "Testing localization");
++            s_failedAssertions = 0;
++
 +            AccessibilityUtils.LogDebug($"Testing localization");
 +
 +            AccessibilityUtils.LogDebug($"Making sure all strings exist");
@@ -14248,15 +14587,46 @@ index 0000000..b86a87e
 +            AssertEquals("Modes", LocalizationUtils.Get(LocalizationKey.GLOBAL_GAME_MODES));
 +            AssertEquals("Choose a Mode", LocalizationUtils.Get(LocalizationKey.GLOBAL_CHOOSE_MODE));
 +            AssertEquals("Claim a Free Deck", LocalizationUtils.Get(LocalizationKey.UI_CHOOSE_FREE_DECK_TITLE));
++            AssertEquals("Open Packs", LocalizationUtils.Get(LocalizationKey.GLOBAL_OPEN_PACKS));
++            AssertEquals("NEW!", LocalizationUtils.Get(LocalizationKey.COLLECTION_CARD_NEW));
++            AssertEquals("Enchantment", LocalizationUtils.Get(LocalizationKey.GLOBAL_ENCHANTMENT));
++
++            // GameStrings we depend on
++            // Made turns to hold out generic so need to signal if something else shows up
++            AssertEquals("|4(Turn,Turns) to Hold Out", GameStrings.Get("BOH_UTHER_08"));
++            AssertEquals("|4(Turn,Turns) to Hold Out", GameStrings.Get("BOH_GULDAN_01"));
++            AssertEquals("|4(Turn,Turns) to Hold Out", GameStrings.Get("BOH_ILLIDAN_08"));
++            AssertEquals(3, GameStrings.FindKeysWithValue("|4(Turn,Turns) to Hold Out").Count);
 +
 +            AccessibilityUtils.LogDebug($"Localization test ended");
++
++            if (s_failedAssertions > 0)
++            {
++                AccessibilityMgr.Output(null, $"Failed {s_failedAssertions} assertions");
++            }
++            else
++            {
++                AccessibilityMgr.Output(null, "All tests OK");
++            }
 +        }
++
++        private static int s_failedAssertions;
 +
 +        private static void AssertEquals(string expected, string actual)
 +        {
 +            if (!expected.Equals(actual))
 +            {
 +                AccessibilityUtils.LogDebug($"Assertion failed. Expected: {expected} , Actual: {actual}");
++                s_failedAssertions++;
++            }
++        }
++
++        private static void AssertEquals(int expected, int actual)
++        {
++            if (!expected.Equals(actual))
++            {
++                AccessibilityUtils.LogDebug($"Assertion failed. Expected: {expected} , Actual: {actual}");
++                s_failedAssertions++;
 +            }
 +        }
 +
@@ -14800,10 +15170,10 @@ index 0000000..63cbf4b
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizationKey.cs b/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizationKey.cs
 new file mode 100644
-index 0000000..af5bf7f
+index 0000000..0b6156c
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizationKey.cs
-@@ -0,0 +1,792 @@
+@@ -0,0 +1,813 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Linq;
@@ -14854,6 +15224,7 @@ index 0000000..af5bf7f
 +    public static LocalizationKey GLOBAL_GAME_MODES = CreateKey("GLUE_GAME_MODES");
 +    public static LocalizationKey GLOBAL_CHOOSE_MODE = CreateKey("GLUE_GAME_MODES_POPUP_HEADER");
 +    public static LocalizationKey GLOBAL_MY_COLLECTION = CreateKey("GLUE_MY_COLLECTION");
++    public static LocalizationKey GLOBAL_OPEN_PACKS = CreateKey("GLUE_OPEN_PACKS");
 +    public static LocalizationKey GLOBAL_HELP = CreateKey("GLOBAL_HELP");
 +    public static LocalizationKey GLOBAL_LOADING_GAME = CreateKey("ACCESSIBILITY_GLOBAL_LOADING_GAME");
 +    public static LocalizationKey GLOBAL_CLOSING_GAME = CreateKey("ACCESSIBILITY_GLOBAL_CLOSING_GAME");
@@ -14867,6 +15238,10 @@ index 0000000..af5bf7f
 +    public static LocalizationKey GLOBAL_GAME_SPEED = CreateKey("ACCESSIBILITY_GLOBAL_GAME_SPEED");
 +    public static LocalizationKey GLOBAL_OPTIONS = CreateKey("GLOBAL_OPTIONS");
 +    public static LocalizationKey GLOBAL_NEW_HEARTHSTONE_ACCESS_VERSION_AVAILABLE = CreateKey("ACCESSIBILITY_GLOBAL_NEW_HEARTHSTONE_ACCESS_VERSION_AVAILABLE");
++
++    // Global cont'd
++    public static LocalizationKey GLOBAL_ACCESSIBILITY_ON = CreateKey("ACCESSIBILITY_GLOBAL_ACCESSIBILITY_ON");
++    public static LocalizationKey GLOBAL_ACCESSIBILITY_OFF = CreateKey("ACCESSIBILITY_GLOBAL_ACCESSIBILITY_OFF");
 +
 +    // Formatting
 +    public static LocalizationKey FORMATTING_PERIOD = CreateKey("ACCESSIBILITY_FORMATTING_PERIOD");
@@ -14916,6 +15291,7 @@ index 0000000..af5bf7f
 +    public static LocalizationKey GLOBAL_STEALTH = CreateKey("GLOBAL_KEYWORD_STEALTH");
 +    public static LocalizationKey GLOBAL_IMMUNE = CreateKey("GLOBAL_KEYWORD_IMMUNE");
 +    public static LocalizationKey GLOBAL_DORMANT = CreateKey("GLOBAL_KEYWORD_DORMANT");
++    public static LocalizationKey GLOBAL_ENCHANTMENT = CreateKey("GLOBAL_CARDTYPE_ENCHANTMENT");
 +
 +    // Gameplay
 +    public static LocalizationKey GAMEPLAY_YOUR_TURN = CreateKey("GAMEPLAY_YOUR_TURN");
@@ -14933,6 +15309,8 @@ index 0000000..af5bf7f
 +    public static LocalizationKey GAMEPLAY_PLAYER_SUMMONED_MINION_BIG_CARD = CreateKey("ACCESSIBILITY_GAMEPLAY_PLAYER_SUMMONED_MINION_BIG_CARD");
 +    public static LocalizationKey GAMEPLAY_OPPONENT_SUMMONED_MINION = CreateKey("ACCESSIBILITY_GAMEPLAY_OPPONENT_SUMMONED_MINION");
 +    public static LocalizationKey GAMEPLAY_OPPONENT_SUMMONED_MINION_BIG_CARD = CreateKey("ACCESSIBILITY_GAMEPLAY_OPPONENT_SUMMONED_MINION_BIG_CARD");
++    public static LocalizationKey GAMEPLAY_PLAYER_TRADED_CARD = CreateKey("ACCESSIBILITY_GAMEPLAY_PLAYER_TRADED_CARD");
++    public static LocalizationKey GAMEPLAY_OPPONENT_TRADED_CARD = CreateKey("ACCESSIBILITY_GAMEPLAY_OPPONENT_TRADED_CARD");
 +    public static LocalizationKey GAMEPLAY_PLAYER_EQUIPPED_WEAPON = CreateKey("ACCESSIBILITY_GAMEPLAY_PLAYER_EQUIPPED_WEAPON");
 +    public static LocalizationKey GAMEPLAY_PLAYER_EQUIPPED_WEAPON_BIG_CARD = CreateKey("ACCESSIBILITY_GAMEPLAY_PLAYER_EQUIPPED_WEAPON_BIG_CARD");
 +    public static LocalizationKey GAMEPLAY_OPPONENT_EQUIPPED_WEAPON = CreateKey("ACCESSIBILITY_GAMEPLAY_OPPONENT_EQUIPPED_WEAPON");
@@ -14951,6 +15329,10 @@ index 0000000..af5bf7f
 +    public static LocalizationKey GAMEPLAY_OPPONENT_DREW_CARD_BUT_BURNED = CreateKey("ACCESSIBILITY_GAMEPLAY_OPPONENT_DREW_CARD_BUT_BURNED");
 +    public static LocalizationKey GAMEPLAY_ENTITY_ATTACKED = CreateKey("ACCESSIBILITY_GAMEPLAY_ENTITY_ATTACKED");
 +    public static LocalizationKey GAMEPLAY_ENTITY_ATTACKED_OTHER = CreateKey("ACCESSIBILITY_GAMEPLAY_ENTITY_ATTACKED_OTHER");
++    public static LocalizationKey GAMEPLAY_JOUST_PLAYER_REVEALED_CARD = CreateKey("ACCESSIBILITY_GAMEPLAY_JOUST_PLAYER_REVEALED_CARD");
++    public static LocalizationKey GAMEPLAY_JOUST_OPPONENT_REVEALED_CARD = CreateKey("ACCESSIBILITY_GAMEPLAY_JOUST_OPPONENT_REVEALED_CARD");
++    public static LocalizationKey GAMEPLAY_JOUST_PLAYER_NO_VALID_CARDS = CreateKey("ACCESSIBILITY_GAMEPLAY_JOUST_PLAYER_NO_VALID_CARDS");
++    public static LocalizationKey GAMEPLAY_JOUST_OPPONENT_NO_VALID_CARDS = CreateKey("ACCESSIBILITY_GAMEPLAY_JOUST_OPPONENT_NO_VALID_CARDS");
 +
 +    // Gameplay
 +    public static LocalizationKey GAMEPLAY_PLAYER_TURN_START_READ_MANA = CreateKey("ACCESSIBILITY_GAMEPLAY_PLAYER_TURN_START_READ_MANA");
@@ -14968,6 +15350,7 @@ index 0000000..af5bf7f
 +    public static LocalizationKey GAMEPLAY_QUERY_SUMMON_MINION_AT_THE_LEFT = CreateKey("ACCESSIBILITY_GAMEPLAY_QUERY_SUMMON_MINION_AT_THE_LEFT");
 +    public static LocalizationKey GAMEPLAY_QUERY_SUMMON_MINION_BETWEEN = CreateKey("ACCESSIBILITY_GAMEPLAY_QUERY_SUMMON_MINION_BETWEEN");
 +    public static LocalizationKey GAMEPLAY_QUERY_PLAY_CARD = CreateKey("ACCESSIBILITY_GAMEPLAY_QUERY_PLAY_CARD");
++    public static LocalizationKey GAMEPLAY_QUERY_TRADE_CARD = CreateKey("ACCESSIBILITY_GAMEPLAY_QUERY_TRADE_CARD");
 +    public static LocalizationKey GAMEPLAY_QUERY_END_TURN_WHEN_VALID_PLAYS = CreateKey("ACCESSIBILITY_GAMEPLAY_QUERY_END_TURN_WHEN_VALID_PLAYS");
 +    public static LocalizationKey GAMEPLAY_QUERY_END_TURN_WHEN_CAN_ATK = CreateKey("ACCESSIBILITY_GAMEPLAY_QUERY_END_TURN_WHEN_CAN_ATK");
 +    public static LocalizationKey GAMEPLAY_QUERY_END_TURN_WHEN_CAN_USE_HERO_POWER = CreateKey("ACCESSIBILITY_GAMEPLAY_QUERY_END_TURN_WHEN_CAN_USE_HERO_POWER");
@@ -15175,6 +15558,7 @@ index 0000000..af5bf7f
 +    public static LocalizationKey GAMEPLAY_READ_CARD_HELP = CreateKey("ACCESSIBILITY_GAMEPLAY_READ_CARD_HELP");
 +    public static LocalizationKey GAMEPLAY_READ_CARD_TOOLTIP_HELP = CreateKey("ACCESSIBILITY_GAMEPLAY_READ_CARD_TOOLTIP_HELP");
 +    public static LocalizationKey GAMEPLAY_PLAY_CARD_HELP = CreateKey("ACCESSIBILITY_GAMEPLAY_PLAY_CARD_HELP");
++    public static LocalizationKey GAMEPLAY_TRADE_CARD_HELP = CreateKey("ACCESSIBILITY_GAMEPLAY_TRADE_CARD_HELP");
 +    public static LocalizationKey GAMEPLAY_SUMMON_MINION_HELP = CreateKey("ACCESSIBILITY_GAMEPLAY_SUMMON_MINION_HELP");
 +    public static LocalizationKey GAMEPLAY_CHOICE_MODE_HELP = CreateKey("ACCESSIBILITY_GAMEPLAY_CHOICE_MODE_HELP");
 +    public static LocalizationKey GAMEPLAY_CHOOSE_TARGET_HELP = CreateKey("ACCESSIBILITY_GAMEPLAY_CHOOSE_TARGET_HELP");
@@ -15388,12 +15772,19 @@ index 0000000..af5bf7f
 +    public static LocalizationKey SCREEN_COLLECTION_MANAGER_EDIT_DECK_REMOVE_CARD_HELP = CreateKey("ACCESSIBILITY_SCREEN_COLLECTION_MANAGER_EDIT_DECK_REMOVE_CARD_HELP");
 +    public static LocalizationKey SCREEN_COLLECTION_MANAGER_EDIT_DECK_RENAME_DECK_PROMPT = CreateKey("ACCESSIBILITY_SCREEN_COLLECTION_MANAGER_EDIT_DECK_RENAME_DECK_PROMPT");
 +
++    // Pack opening screen
++    public static LocalizationKey SCREEN_PACK_OPENING_OPEN_CARDS_HELP = CreateKey("ACCESSIBILITY_SCREEN_PACK_OPENING_OPEN_CARDS_HELP");
++    public static LocalizationKey SCREEN_PACK_OPENING_NO_CARD_PACKS = CreateKey("ACCESSIBILITY_SCREEN_PACK_OPENING_NO_CARD_PACKS");
++
 +    // Quest progress toast
 +    public static LocalizationKey TOAST_QUEST_PROGRESS_TOAST_TITLE = CreateKey("ACCESSIBILITY_TOAST_QUEST_PROGRESS_TOAST_TITLE");
 +    public static LocalizationKey TOAST_QUEST_PROGRESS_TOAST_PROGRESS = CreateKey("ACCESSIBILITY_TOAST_QUEST_PROGRESS_TOAST_PROGRESS");
 +
 +    // Quest toast
 +    public static LocalizationKey TOAST_QUEST_TOAST_TITLE = CreateKey("ACCESSIBILITY_TOAST_QUEST_TOAST_TITLE");
++
++    // Collectible cards
++    public static LocalizationKey COLLECTION_CARD_NEW = CreateKey("GLUE_COLLECTION_CARD_NEW");
 +
 +    // Tutorial
 +    public static LocalizationKey TUTORIAL_LOADING_TUTORIAL = CreateKey("ACCESSIBILITY_TUTORIAL_LOADING_TUTORIAL");
@@ -15738,10 +16129,10 @@ index 0000000..e367eeb
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizedText.cs b/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizedText.cs
 new file mode 100644
-index 0000000..4dd7c35
+index 0000000..4f3c2d3
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizedText.cs
-@@ -0,0 +1,62 @@
+@@ -0,0 +1,66 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Linq;
@@ -15788,6 +16179,7 @@ index 0000000..4dd7c35
 +    public static string GLOBAL_STEALTH => LocalizationUtils.Get(LocalizationKey.GLOBAL_STEALTH);
 +    public static string GLOBAL_IMMUNE => LocalizationUtils.Get(LocalizationKey.GLOBAL_IMMUNE);
 +    public static string GLOBAL_DORMANT => LocalizationUtils.Get(LocalizationKey.GLOBAL_DORMANT);
++    public static string GLOBAL_ENCHANTMENT => LocalizationUtils.Get(LocalizationKey.GLOBAL_ENCHANTMENT);
 +
 +    // Gameplay
 +    public static string GAMEPLAY_YOUR_TURN => LocalizationUtils.Get(LocalizationKey.GAMEPLAY_YOUR_TURN);
@@ -15801,8 +16193,130 @@ index 0000000..4dd7c35
 +    // Screens
 +    public static string SCREEN_GO_BACK => LocalizationUtils.Get(LocalizationKey.SCREEN_GO_BACK);
 +
++    // Collectible cards
++    public static string COLLECTION_CARD_NEW => LocalizationUtils.Get(LocalizationKey.COLLECTION_CARD_NEW).ToLower();
++
 +    // Tutorial
 +    public static string TUTORIAL_LOADING_TUTORIAL => LocalizationUtils.Get(LocalizationKey.TUTORIAL_LOADING_TUTORIAL);
++}
+diff --git a/Decompiled/Assembly-CSharp/Accessibility/PackOpening/AccessiblePackOpeningCard.cs b/Decompiled/Assembly-CSharp/Accessibility/PackOpening/AccessiblePackOpeningCard.cs
+new file mode 100644
+index 0000000..6833ca0
+--- /dev/null
++++ b/Decompiled/Assembly-CSharp/Accessibility/PackOpening/AccessiblePackOpeningCard.cs
+@@ -0,0 +1,55 @@
++﻿using System;
++using System.Collections.Generic;
++
++namespace Accessibility
++{
++    class AccessiblePackOpeningCard : AccessibleItem
++    {
++        private readonly PackOpeningCard m_card;
++
++        internal AccessiblePackOpeningCard(AccessibleComponent parent, PackOpeningCard card) : base(parent)
++        {
++            m_card = card;
++        }
++
++        internal override List<string> GetLines()
++        {
++            if (m_card.IsRevealed())
++            {
++                return GetLinesForRevealedCard();
++            }
++            else
++            {
++                return GetLinesForHiddenCard();
++            }
++        }
++
++        private List<string> GetLinesForRevealedCard()
++        {
++            var ret = new List<string>();
++
++            ret.AddRange(AccessibleCardUtils.GetLinesForNormalEntityDef(m_card.GetEntityDef(), m_card.m_premium, m_card.GetClassName()));
++
++            if (m_card.m_isNew)
++            {
++                ret.Add(LocalizedText.COLLECTION_CARD_NEW);
++            }
++
++            return ret;
++        }
++
++        private List<string> GetLinesForHiddenCard()
++        {
++            var ret = new List<string>();
++
++            ret.Add(LocalizationUtils.Get(LocalizationKey.UI_REWARD_TYPE_ONE_CARD));
++
++            return ret;
++        }
++
++        public PackOpeningCard GetPackOpeningCard()
++        {
++            return m_card;
++        }
++    }
++}
+diff --git a/Decompiled/Assembly-CSharp/Accessibility/PackOpening/AccessibleUnopenedPack.cs b/Decompiled/Assembly-CSharp/Accessibility/PackOpening/AccessibleUnopenedPack.cs
+new file mode 100644
+index 0000000..fae3038
+--- /dev/null
++++ b/Decompiled/Assembly-CSharp/Accessibility/PackOpening/AccessibleUnopenedPack.cs
+@@ -0,0 +1,52 @@
++﻿using System;
++using System.Collections.Generic;
++
++namespace Accessibility
++{
++    class AccessibleUnopenedPack : AccessibleItem
++    {
++        private readonly UnopenedPack m_pack;
++
++        internal AccessibleUnopenedPack(AccessibleComponent parent, UnopenedPack pack) : base(parent)
++        {
++            m_pack = pack;
++        }
++
++        internal override List<string> GetLines()
++        {
++            var ret = new List<string>();
++
++            ret.Add(LocalizationUtils.Format(LocalizationKey.UI_REWARD_N_CARD_PACKS, m_pack.GetBoosterStack().Count));
++
++            AccessibleCardUtils.AddLineIfExists(GetLockedRibbonText(), ret);
++            AccessibleCardUtils.AddLineIfExists(GetPackName(), ret);
++
++            return ret;
++        }
++
++        public string GetLockedRibbonText()
++        {
++            if (m_pack.CanOpenPack())
++            {
++                return null;
++            }
++
++            return m_pack.m_LockedRibbonText?.Text;
++        }
++
++        private string GetPackName()
++        {
++            return AccessibleCardUtils.GetCardPackName(m_pack.GetBoosterStack().Id);
++        }
++
++        public bool IsLocked()
++        {
++            return !m_pack.CanOpenPack();
++        }
++
++        public UnopenedPack GetUnopenedPack()
++        {
++            return m_pack;
++        }
++    }
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/QueuedText.cs b/Decompiled/Assembly-CSharp/Accessibility/QueuedText.cs
 new file mode 100644
@@ -20534,6 +21048,306 @@ index 8a8d3a7..6a89030 100644
 +
 +	#endregion
  }
+diff --git a/Decompiled/Assembly-CSharp/BigCard.cs b/Decompiled/Assembly-CSharp/BigCard.cs
+index b7889e1..74e0b46 100644
+--- a/Decompiled/Assembly-CSharp/BigCard.cs
++++ b/Decompiled/Assembly-CSharp/BigCard.cs
+@@ -106,7 +106,7 @@ public class BigCard : MonoBehaviour
+ 
+ 	private Vector3 m_initialBannerTextScale;
+ 
+-	private Pool<BigCardEnchantmentPanel> m_enchantmentPool = new Pool<BigCardEnchantmentPanel>();
++	internal Pool<BigCardEnchantmentPanel> m_enchantmentPool = new Pool<BigCardEnchantmentPanel>();
+ 
+ 	private Map<string, BigCardEnchantmentPanel> m_uniqueEnchantmentLookup = new Map<string, BigCardEnchantmentPanel>();
+ 
+diff --git a/Decompiled/Assembly-CSharp/BoH_Guldan_01.cs b/Decompiled/Assembly-CSharp/BoH_Guldan_01.cs
+index bebf08d..f8fd035 100644
+--- a/Decompiled/Assembly-CSharp/BoH_Guldan_01.cs
++++ b/Decompiled/Assembly-CSharp/BoH_Guldan_01.cs
+@@ -52,8 +52,6 @@ public class BoH_Guldan_01 : BoH_Guldan_Dungeon
+ 
+ 	private HashSet<string> m_playedLines = new HashSet<string>();
+ 
+-	private Notification m_turnCounter;
+-
+ 	private MineCartRushArt m_mineCartArt;
+ 
+ 	private static Map<GameEntityOption, bool> InitBooleanOptions()
+@@ -259,46 +257,13 @@ public class BoH_Guldan_01 : BoH_Guldan_Dungeon
+ 	public override void NotifyOfMulliganEnded()
+ 	{
+ 		base.NotifyOfMulliganEnded();
+-		InitVisuals();
+-	}
+-
+-	private void InitVisuals()
+-	{
+-		int cost = GetCost();
+-		InitTurnCounter(cost);
++		InitTurnCounterVisuals();
+ 	}
+ 
+ 	public override void OnTagChanged(TagDelta change)
+ 	{
+ 		base.OnTagChanged(change);
+-		GAME_TAG tag = (GAME_TAG)change.tag;
+-		if (tag == GAME_TAG.COST && change.newValue != change.oldValue)
+-		{
+-			UpdateVisuals(change.newValue);
+-		}
+-	}
+-
+-	private void InitTurnCounter(int cost)
+-	{
+-		GameObject gameObject = AssetLoader.Get().InstantiatePrefab("LOE_Turn_Timer.prefab:b05530aa55868554fb8f0c66632b3c22");
+-		m_turnCounter = gameObject.GetComponent<Notification>();
+-		PlayMakerFSM component = m_turnCounter.GetComponent<PlayMakerFSM>();
+-		component.FsmVariables.GetFsmBool("RunningMan").Value = true;
+-		component.FsmVariables.GetFsmBool("MineCart").Value = false;
+-		component.FsmVariables.GetFsmBool("Airship").Value = false;
+-		component.FsmVariables.GetFsmBool("Destroyer").Value = false;
+-		component.SendEvent("Birth");
+-		Actor actor = GameState.Get().GetOpposingSidePlayer().GetHeroCard()
+-			.GetActor();
+-		m_turnCounter.transform.parent = actor.gameObject.transform;
+-		m_turnCounter.transform.localPosition = new Vector3(-1.4f, 0.187f, -0.11f);
+-		m_turnCounter.transform.localScale = Vector3.one * 0.52f;
+-		UpdateTurnCounterText(cost);
+-	}
+-
+-	private void UpdateVisuals(int cost)
+-	{
+-		UpdateTurnCounter(cost);
++		UpdateTurnCounterVisualsIfNeeded(change);
+ 	}
+ 
+ 	private void UpdateMineCartArt()
+@@ -307,31 +272,4 @@ public class BoH_Guldan_01 : BoH_Guldan_Dungeon
+ 			.GetActor();
+ 		m_mineCartArt.DoPortraitSwap(actor);
+ 	}
+-
+-	private void UpdateTurnCounter(int cost)
+-	{
+-		m_turnCounter.GetComponent<PlayMakerFSM>().SendEvent("Action");
+-		if (cost <= 0)
+-		{
+-			Object.Destroy(m_turnCounter.gameObject);
+-		}
+-		else
+-		{
+-			UpdateTurnCounterText(cost);
+-		}
+-	}
+-
+-	private void UpdateTurnCounterText(int cost)
+-	{
+-		GameStrings.PluralNumber[] pluralNumbers = new GameStrings.PluralNumber[1]
+-		{
+-			new GameStrings.PluralNumber
+-			{
+-				m_index = 0,
+-				m_number = cost
+-			}
+-		};
+-		string headlineString = GameStrings.FormatPlurals("BOH_GULDAN_01", pluralNumbers);
+-		m_turnCounter.ChangeDialogText(headlineString, cost.ToString(), "", "");
+-	}
+ }
+diff --git a/Decompiled/Assembly-CSharp/BoH_Guldan_06.cs b/Decompiled/Assembly-CSharp/BoH_Guldan_06.cs
+index c6026b4..6417ac0 100644
+--- a/Decompiled/Assembly-CSharp/BoH_Guldan_06.cs
++++ b/Decompiled/Assembly-CSharp/BoH_Guldan_06.cs
+@@ -56,8 +56,6 @@ public class BoH_Guldan_06 : BoH_Guldan_Dungeon
+ 
+ 	private HashSet<string> m_playedLines = new HashSet<string>();
+ 
+-	private Notification m_turnCounter;
+-
+ 	private MineCartRushArt m_mineCartArt;
+ 
+ 	private static Map<GameEntityOption, bool> InitBooleanOptions()
+@@ -266,46 +264,13 @@ public class BoH_Guldan_06 : BoH_Guldan_Dungeon
+ 	public override void NotifyOfMulliganEnded()
+ 	{
+ 		base.NotifyOfMulliganEnded();
+-		InitVisuals();
+-	}
+-
+-	private void InitVisuals()
+-	{
+-		int cost = GetCost();
+-		InitTurnCounter(cost);
++		InitTurnCounterVisuals();
+ 	}
+ 
+ 	public override void OnTagChanged(TagDelta change)
+ 	{
+ 		base.OnTagChanged(change);
+-		GAME_TAG tag = (GAME_TAG)change.tag;
+-		if (tag == GAME_TAG.COST && change.newValue != change.oldValue)
+-		{
+-			UpdateVisuals(change.newValue);
+-		}
+-	}
+-
+-	private void InitTurnCounter(int cost)
+-	{
+-		GameObject gameObject = AssetLoader.Get().InstantiatePrefab("LOE_Turn_Timer.prefab:b05530aa55868554fb8f0c66632b3c22");
+-		m_turnCounter = gameObject.GetComponent<Notification>();
+-		PlayMakerFSM component = m_turnCounter.GetComponent<PlayMakerFSM>();
+-		component.FsmVariables.GetFsmBool("RunningMan").Value = true;
+-		component.FsmVariables.GetFsmBool("MineCart").Value = false;
+-		component.FsmVariables.GetFsmBool("Airship").Value = false;
+-		component.FsmVariables.GetFsmBool("Destroyer").Value = false;
+-		component.SendEvent("Birth");
+-		Actor actor = GameState.Get().GetOpposingSidePlayer().GetHeroCard()
+-			.GetActor();
+-		m_turnCounter.transform.parent = actor.gameObject.transform;
+-		m_turnCounter.transform.localPosition = new Vector3(-1.4f, 0.187f, -0.11f);
+-		m_turnCounter.transform.localScale = Vector3.one * 0.52f;
+-		UpdateTurnCounterText(cost);
+-	}
+-
+-	private void UpdateVisuals(int cost)
+-	{
+-		UpdateTurnCounter(cost);
++		UpdateTurnCounterVisualsIfNeeded(change);
+ 	}
+ 
+ 	private void UpdateMineCartArt()
+@@ -314,31 +279,4 @@ public class BoH_Guldan_06 : BoH_Guldan_Dungeon
+ 			.GetActor();
+ 		m_mineCartArt.DoPortraitSwap(actor);
+ 	}
+-
+-	private void UpdateTurnCounter(int cost)
+-	{
+-		m_turnCounter.GetComponent<PlayMakerFSM>().SendEvent("Action");
+-		if (cost <= 0)
+-		{
+-			Object.Destroy(m_turnCounter.gameObject);
+-		}
+-		else
+-		{
+-			UpdateTurnCounterText(cost);
+-		}
+-	}
+-
+-	private void UpdateTurnCounterText(int cost)
+-	{
+-		GameStrings.PluralNumber[] pluralNumbers = new GameStrings.PluralNumber[1]
+-		{
+-			new GameStrings.PluralNumber
+-			{
+-				m_index = 0,
+-				m_number = cost
+-			}
+-		};
+-		string headlineString = GameStrings.FormatPlurals("BOH_GULDAN_01", pluralNumbers);
+-		m_turnCounter.ChangeDialogText(headlineString, cost.ToString(), "", "");
+-	}
+ }
+diff --git a/Decompiled/Assembly-CSharp/BoH_Illidan_08.cs b/Decompiled/Assembly-CSharp/BoH_Illidan_08.cs
+index 0efae65..2c4f170 100644
+--- a/Decompiled/Assembly-CSharp/BoH_Illidan_08.cs
++++ b/Decompiled/Assembly-CSharp/BoH_Illidan_08.cs
+@@ -80,8 +80,6 @@ public class BoH_Illidan_08 : BoH_Illidan_Dungeon
+ 
+ 	private HashSet<string> m_playedLines = new HashSet<string>();
+ 
+-	private Notification m_turnCounter;
+-
+ 	private MineCartRushArt m_mineCartArt;
+ 
+ 	private static Map<GameEntityOption, bool> InitBooleanOptions()
+@@ -196,7 +194,7 @@ public class BoH_Illidan_08 : BoH_Illidan_Dungeon
+ 			yield return MissionPlayVOOnce(enemyActor, m_InGame_BossUsesHeroPowerLines);
+ 			break;
+ 		case 105:
+-			InitVisuals();
++			InitTurnCounterVisuals();
+ 			GameState.Get().GetOpposingSidePlayer().UpdateDisplayInfo();
+ 			Gameplay.Get().GetNameBannerForSide(Player.Side.OPPOSING).UpdateHeroNameBanner();
+ 			break;
+@@ -344,43 +342,10 @@ public class BoH_Illidan_08 : BoH_Illidan_Dungeon
+ 		}
+ 	}
+ 
+-	private void InitVisuals()
+-	{
+-		int cost = GetCost();
+-		InitTurnCounter(cost);
+-	}
+-
+ 	public override void OnTagChanged(TagDelta change)
+ 	{
+ 		base.OnTagChanged(change);
+-		GAME_TAG tag = (GAME_TAG)change.tag;
+-		if (tag == GAME_TAG.COST && change.newValue != change.oldValue)
+-		{
+-			UpdateVisuals(change.newValue);
+-		}
+-	}
+-
+-	private void InitTurnCounter(int cost)
+-	{
+-		GameObject gameObject = AssetLoader.Get().InstantiatePrefab("LOE_Turn_Timer.prefab:b05530aa55868554fb8f0c66632b3c22");
+-		m_turnCounter = gameObject.GetComponent<Notification>();
+-		PlayMakerFSM component = m_turnCounter.GetComponent<PlayMakerFSM>();
+-		component.FsmVariables.GetFsmBool("RunningMan").Value = false;
+-		component.FsmVariables.GetFsmBool("MineCart").Value = false;
+-		component.FsmVariables.GetFsmBool("Airship").Value = false;
+-		component.FsmVariables.GetFsmBool("Destroyer").Value = true;
+-		component.SendEvent("Birth");
+-		Actor actor = GameState.Get().GetOpposingSidePlayer().GetHeroCard()
+-			.GetActor();
+-		m_turnCounter.transform.parent = actor.gameObject.transform;
+-		m_turnCounter.transform.localPosition = new Vector3(-1.4f, 0.187f, -0.11f);
+-		m_turnCounter.transform.localScale = Vector3.one * 0.52f;
+-		UpdateTurnCounterText(cost);
+-	}
+-
+-	private void UpdateVisuals(int cost)
+-	{
+-		UpdateTurnCounter(cost);
++		UpdateTurnCounterVisualsIfNeeded(change);
+ 	}
+ 
+ 	private void UpdateMineCartArt()
+@@ -389,31 +354,4 @@ public class BoH_Illidan_08 : BoH_Illidan_Dungeon
+ 			.GetActor();
+ 		m_mineCartArt.DoPortraitSwap(actor);
+ 	}
+-
+-	private void UpdateTurnCounter(int cost)
+-	{
+-		m_turnCounter.GetComponent<PlayMakerFSM>().SendEvent("Action");
+-		if (cost <= 0)
+-		{
+-			Object.Destroy(m_turnCounter.gameObject);
+-		}
+-		else
+-		{
+-			UpdateTurnCounterText(cost);
+-		}
+-	}
+-
+-	private void UpdateTurnCounterText(int cost)
+-	{
+-		GameStrings.PluralNumber[] pluralNumbers = new GameStrings.PluralNumber[1]
+-		{
+-			new GameStrings.PluralNumber
+-			{
+-				m_index = 0,
+-				m_number = cost
+-			}
+-		};
+-		string headlineString = GameStrings.FormatPlurals("BOH_ILLIDAN_08", pluralNumbers);
+-		m_turnCounter.ChangeDialogText(headlineString, cost.ToString(), "", "");
+-	}
+ }
 diff --git a/Decompiled/Assembly-CSharp/BoH_Jaina_06.cs b/Decompiled/Assembly-CSharp/BoH_Jaina_06.cs
 index 6dc59e8..b863557 100644
 --- a/Decompiled/Assembly-CSharp/BoH_Jaina_06.cs
@@ -20555,6 +21369,118 @@ index 6dc59e8..b863557 100644
  			yield return PlayLineAlways(enemyActor, VO_Story_Hero_Garrosh_Male_Orc_Story_Jaina_Mission6ExchangeA_01);
  			break;
  		case 5:
+diff --git a/Decompiled/Assembly-CSharp/BoH_Uther_08.cs b/Decompiled/Assembly-CSharp/BoH_Uther_08.cs
+index 03a8744..5656764 100644
+--- a/Decompiled/Assembly-CSharp/BoH_Uther_08.cs
++++ b/Decompiled/Assembly-CSharp/BoH_Uther_08.cs
+@@ -46,8 +46,6 @@ public class BoH_Uther_08 : BoH_Uther_Dungeon
+ 
+ 	private HashSet<string> m_playedLines = new HashSet<string>();
+ 
+-	private Notification m_turnCounter;
+-
+ 	private MineCartRushArt m_mineCartArt;
+ 
+ 	private static Map<GameEntityOption, bool> InitBooleanOptions()
+@@ -228,46 +226,13 @@ public class BoH_Uther_08 : BoH_Uther_Dungeon
+ 	public override void NotifyOfMulliganEnded()
+ 	{
+ 		base.NotifyOfMulliganEnded();
+-		InitVisuals();
+-	}
+-
+-	private void InitVisuals()
+-	{
+-		int cost = GetCost();
+-		InitTurnCounter(cost);
++		InitTurnCounterVisuals();
+ 	}
+ 
+ 	public override void OnTagChanged(TagDelta change)
+ 	{
+ 		base.OnTagChanged(change);
+-		GAME_TAG tag = (GAME_TAG)change.tag;
+-		if (tag == GAME_TAG.COST && change.newValue != change.oldValue)
+-		{
+-			UpdateVisuals(change.newValue);
+-		}
+-	}
+-
+-	private void InitTurnCounter(int cost)
+-	{
+-		GameObject gameObject = AssetLoader.Get().InstantiatePrefab("LOE_Turn_Timer.prefab:b05530aa55868554fb8f0c66632b3c22");
+-		m_turnCounter = gameObject.GetComponent<Notification>();
+-		PlayMakerFSM component = m_turnCounter.GetComponent<PlayMakerFSM>();
+-		component.FsmVariables.GetFsmBool("RunningMan").Value = true;
+-		component.FsmVariables.GetFsmBool("MineCart").Value = false;
+-		component.FsmVariables.GetFsmBool("Airship").Value = false;
+-		component.FsmVariables.GetFsmBool("Destroyer").Value = false;
+-		component.SendEvent("Birth");
+-		Actor actor = GameState.Get().GetOpposingSidePlayer().GetHeroCard()
+-			.GetActor();
+-		m_turnCounter.transform.parent = actor.gameObject.transform;
+-		m_turnCounter.transform.localPosition = new Vector3(-1.4f, 0.187f, -0.11f);
+-		m_turnCounter.transform.localScale = Vector3.one * 0.52f;
+-		UpdateTurnCounterText(cost);
+-	}
+-
+-	private void UpdateVisuals(int cost)
+-	{
+-		UpdateTurnCounter(cost);
++		UpdateTurnCounterVisualsIfNeeded(change);
+ 	}
+ 
+ 	private void UpdateMineCartArt()
+@@ -277,33 +242,6 @@ public class BoH_Uther_08 : BoH_Uther_Dungeon
+ 		m_mineCartArt.DoPortraitSwap(actor);
+ 	}
+ 
+-	private void UpdateTurnCounter(int cost)
+-	{
+-		m_turnCounter.GetComponent<PlayMakerFSM>().SendEvent("Action");
+-		if (cost <= 0)
+-		{
+-			Object.Destroy(m_turnCounter.gameObject);
+-		}
+-		else
+-		{
+-			UpdateTurnCounterText(cost);
+-		}
+-	}
+-
+-	private void UpdateTurnCounterText(int cost)
+-	{
+-		GameStrings.PluralNumber[] pluralNumbers = new GameStrings.PluralNumber[1]
+-		{
+-			new GameStrings.PluralNumber
+-			{
+-				m_index = 0,
+-				m_number = cost
+-			}
+-		};
+-		string headlineString = GameStrings.FormatPlurals("BOH_UTHER_08", pluralNumbers);
+-		m_turnCounter.ChangeDialogText(headlineString, cost.ToString(), "", "");
+-	}
+-
+ 	public override void StartGameplaySoundtracks()
+ 	{
+ 		MusicManager.Get().StartPlaylist(MusicPlaylistType.InGame_ICCLichKing);
+diff --git a/Decompiled/Assembly-CSharp/Board.cs b/Decompiled/Assembly-CSharp/Board.cs
+index 10baeb6..b93d040 100644
+--- a/Decompiled/Assembly-CSharp/Board.cs
++++ b/Decompiled/Assembly-CSharp/Board.cs
+@@ -256,6 +256,11 @@ public class Board : MonoBehaviour
+ 		return Gameplay.Get().GetBoardLayout().FindCollider(name);
+ 	}
+ 
++	public Collider GetTradeArea()
++	{
++		return FindCollider("TradeArea");
++	}
++
+ 	public GameObject GetMouseClickDustEffectPrefab()
+ 	{
+ 		return m_MouseClickDustEffect;
 diff --git a/Decompiled/Assembly-CSharp/BookTab.cs b/Decompiled/Assembly-CSharp/BookTab.cs
 index a39c1b9..8143436 100644
 --- a/Decompiled/Assembly-CSharp/BookTab.cs
@@ -20625,7 +21551,7 @@ index 802a573..e462f80 100644
  	private List<GameObject> m_horizontalDividers = new List<GameObject>();
  
 diff --git a/Decompiled/Assembly-CSharp/Card.cs b/Decompiled/Assembly-CSharp/Card.cs
-index e0e7f5e..25dd633 100644
+index e0e7f5e..1866655 100644
 --- a/Decompiled/Assembly-CSharp/Card.cs
 +++ b/Decompiled/Assembly-CSharp/Card.cs
 @@ -2,6 +2,7 @@ using System;
@@ -20668,6 +21594,15 @@ index e0e7f5e..25dd633 100644
  		Vector3 vector = deckZone.GetThicknessForLayout().GetMeshRenderer().bounds.center + IN_DECK_OFFSET;
  		Vector3 vector2 = vector + ABOVE_DECK_OFFSET;
  		Vector3 vector3 = new Vector3(0f, IN_DECK_ANGLES.y, 0f);
+@@ -6776,7 +6781,7 @@ public class Card : MonoBehaviour
+ 		{
+ 			return false;
+ 		}
+-		Collider collider = Board.Get().FindCollider("TradeArea");
++		Collider collider = Board.Get().GetTradeArea();
+ 		if (collider == null)
+ 		{
+ 			return false;
 diff --git a/Decompiled/Assembly-CSharp/CardListPanel.cs b/Decompiled/Assembly-CSharp/CardListPanel.cs
 index 2670877..b20f23f 100644
 --- a/Decompiled/Assembly-CSharp/CardListPanel.cs
@@ -20874,7 +21809,7 @@ index 745be4f..a04faea 100644
  
  	private IEnumerator PlayPowerUpSpell()
 diff --git a/Decompiled/Assembly-CSharp/ChatMgr.cs b/Decompiled/Assembly-CSharp/ChatMgr.cs
-index e573a4d..162ea7a 100644
+index e573a4d..eb0d7d5 100644
 --- a/Decompiled/Assembly-CSharp/ChatMgr.cs
 +++ b/Decompiled/Assembly-CSharp/ChatMgr.cs
 @@ -2,6 +2,7 @@ using System;
@@ -20885,7 +21820,7 @@ index e573a4d..162ea7a 100644
  using bgs;
  using Hearthstone;
  using UnityEngine;
-@@ -689,6 +690,11 @@ public class ChatMgr : MonoBehaviour
+@@ -689,6 +690,15 @@ public class ChatMgr : MonoBehaviour
  
  	public void HandleGUIInput()
  	{
@@ -20894,11 +21829,15 @@ index e573a4d..162ea7a 100644
 +			// Chat is not implemented yet
 +			return;
 +        }
++
++		// Players were running into issues due to pressing Enter while using OCR so we'll disable this for now and rethink it later
++		return;
++
  		if (!m_fatalErrorMgr.HasError() && !IsMobilePlatform())
  		{
  			HandleGUIInputForQuickChat();
 diff --git a/Decompiled/Assembly-CSharp/CheatMgr.cs b/Decompiled/Assembly-CSharp/CheatMgr.cs
-index be1e317..7966b20 100644
+index be1e317..a18cdf1 100644
 --- a/Decompiled/Assembly-CSharp/CheatMgr.cs
 +++ b/Decompiled/Assembly-CSharp/CheatMgr.cs
 @@ -7,6 +7,7 @@ using Blizzard.T5.Services;
@@ -20940,8 +21879,16 @@ index be1e317..7966b20 100644
  		m_inputActive = false;
  		inputCommand = inputCommand.TrimStart();
  		if (!string.IsNullOrEmpty(inputCommand))
+@@ -568,6 +572,7 @@ public class CheatMgr : IService
+ 		{
+ 			return "\"" + text + "\" cheat command executed, but failed!";
+ 		}
++		AccessibilityUtils.LogDebug($"Processed cheat: {text}");
+ 		return null;
+ 	}
+ 
 diff --git a/Decompiled/Assembly-CSharp/Cheats.cs b/Decompiled/Assembly-CSharp/Cheats.cs
-index b04fb6e..98602fc 100644
+index b04fb6e..78b8bc3 100644
 --- a/Decompiled/Assembly-CSharp/Cheats.cs
 +++ b/Decompiled/Assembly-CSharp/Cheats.cs
 @@ -36,6 +36,7 @@ using PegasusUtil;
@@ -20952,7 +21899,7 @@ index b04fb6e..98602fc 100644
  
  public class Cheats : IService
  {
-@@ -384,6 +385,24 @@ public class Cheats : IService
+@@ -384,6 +385,29 @@ public class Cheats : IService
  		CheatMgr cheatMgr = serviceLocator.Get<CheatMgr>();
  		if (HearthstoneApplication.IsInternal())
  		{
@@ -20974,10 +21921,15 @@ index b04fb6e..98602fc 100644
 +			cheatMgr.RegisterCategory("HSA others");
 +			cheatMgr.RegisterCheatHandler("hsashowleaguepromotionrewards", OnProcessCheat_hsashowleaguepromotionrewards, "Show (legacy?) league promotion rewards", "<command> [rank]", "bronze10");
 +			cheatMgr.RegisterCheatHandler("hsashowquestchestreward", OnProcessCheat_hsashowquestchestreward, "Show (legacy?) quest chest reward", "<command>", "");
++			cheatMgr.RegisterCategory("HSA pack opening");
++			cheatMgr.RegisterCheatHandler("hsasettestpacks1", OnProcessCheat_hsasettestpacks1, "Set test packs 1", "<command>", "");
++			cheatMgr.RegisterCheatHandler("hsasettestpacks2", OnProcessCheat_hsasettestpacks2, "Set test packs 2", "<command>", "");
++			cheatMgr.RegisterCheatHandler("hsasettestpacks3", OnProcessCheat_hsasettestpacks3, "Set test packs 3", "<command>", "");
++			cheatMgr.RegisterCheatHandler("hsaresettestpacks", OnProcessCheat_hsaresettestpacks, "Reset test packs", "<command>", "");
  			cheatMgr.RegisterCategory("help");
  			cheatMgr.RegisterCheatHandler("help", OnProcessCheat_help, "Get help for a specific command or list of commands", "<command name>", "");
  			cheatMgr.RegisterCheatHandler("example", OnProcessCheat_example, "Run an example of this command if one exists", "<command name>");
-@@ -474,7 +493,7 @@ public class Cheats : IService
+@@ -474,7 +498,7 @@ public class Cheats : IService
  			cheatMgr.RegisterCheatHandler("iksaction", OnProcessCheat_iksgameaction, "Execute a game action as if IKS was clicked.");
  			cheatMgr.RegisterCheatHandler("iksseen", OnProcessCheat_iksseen, "Determine if an IKS message should be seen by its game action.");
  			cheatMgr.RegisterCategory("rank");
@@ -20986,7 +21938,7 @@ index b04fb6e..98602fc 100644
  			cheatMgr.RegisterCheatHandler("rankrefresh", OnProcessCheat_rankrefresh, "Request medalinfo from server and show rankchange twoscoop after receiving it");
  			cheatMgr.RegisterCheatHandler("rankchange", OnProcessCheat_rankchange, "Show a fake rankchange twoscoop", "[rank] [up|down|win|loss] [wild] [winstreak] [chest]", "bronze5 up chest");
  			cheatMgr.RegisterCheatHandler("rankreward", OnProcessCheat_rankreward, "Show a fake RankedRewardDisplay for rank (or all ranks up to a rank)", "<rank> [standard|wild|classic|all]", "bronze5 all");
-@@ -671,7 +690,7 @@ public class Cheats : IService
+@@ -671,7 +695,7 @@ public class Cheats : IService
  		yield break;
  	}
  
@@ -20995,7 +21947,7 @@ index b04fb6e..98602fc 100644
  	{
  		return new Type[2]
  		{
-@@ -3071,8 +3090,10 @@ public class Cheats : IService
+@@ -3071,8 +3095,10 @@ public class Cheats : IService
  		}
  		if (flag)
  		{
@@ -21008,7 +21960,7 @@ index b04fb6e..98602fc 100644
  			QuestToast.ShowQuestToast(UserAttentionBlocker.ALL, null, updateCacheValues: false, achievement);
  		}
  		else
-@@ -3463,7 +3484,7 @@ public class Cheats : IService
+@@ -3463,7 +3489,7 @@ public class Cheats : IService
  
  	private bool OnProcessCheat_setRotationRotatedBoostersPopup(string func, string[] args, string rawArgs)
  	{
@@ -21017,7 +21969,7 @@ index b04fb6e..98602fc 100644
  		DialogManager.Get().ShowSetRotationTutorialPopup(UserAttentionBlocker.SET_ROTATION_INTRO, info);
  		return true;
  	}
-@@ -10270,7 +10291,7 @@ public class Cheats : IService
+@@ -10270,7 +10296,7 @@ public class Cheats : IService
  
  	private bool OnProcessCheat_showtrackreward(string func, string[] args, string rawArgs)
  	{
@@ -21026,7 +21978,7 @@ index b04fb6e..98602fc 100644
  		if (!int.TryParse(args[0], out var level))
  		{
  			UIStatus.Get().AddInfo(message);
-@@ -10281,6 +10302,7 @@ public class Cheats : IService
+@@ -10281,6 +10307,7 @@ public class Cheats : IService
  		{
  			bool.TryParse(args[1], out result);
  		}
@@ -21034,7 +21986,7 @@ index b04fb6e..98602fc 100644
  		RewardTrackLevelDbfRecord rewardTrackLevelDbfRecord = RewardTrackManager.Get().RewardTrackAsset.Levels.Where((RewardTrackLevelDbfRecord r) => r.Level == level).FirstOrDefault();
  		if (rewardTrackLevelDbfRecord == null)
  		{
-@@ -10300,6 +10322,10 @@ public class Cheats : IService
+@@ -10300,6 +10327,10 @@ public class Cheats : IService
  			}
  			return true;
  		}
@@ -21045,7 +21997,7 @@ index b04fb6e..98602fc 100644
  		RewardScroll.DebugShowFake(RewardTrackFactory.CreateRewardScrollDataModel(num, level));
  		return true;
  	}
-@@ -10433,4 +10459,185 @@ public class Cheats : IService
+@@ -10433,4 +10464,234 @@ public class Cheats : IService
  		}
  		return true;
  	}
@@ -21229,7 +22181,56 @@ index b04fb6e..98602fc 100644
 +		return list;
 +    }
 +
-+    #endregion
++    #region Test Pack Opening
++
++    private bool OnProcessCheat_hsasettestpacks1(string func, string[] args, string rawArgs)
++    {
++        NetCache.NetCacheBoosters netCacheBoosters = new NetCache.NetCacheBoosters();
++        AddTestPack(netCacheBoosters.BoosterStacks, 1, 1);
++        AddTestPack(netCacheBoosters.BoosterStacks, 23, 1);
++        NetCache.Get().SetTestDataNetCacheBoosters(netCacheBoosters);
++
++		return true;
++    }
++
++    private bool OnProcessCheat_hsasettestpacks2(string func, string[] args, string rawArgs)
++    {
++        NetCache.NetCacheBoosters netCacheBoosters = new NetCache.NetCacheBoosters();
++        AddTestPack(netCacheBoosters.BoosterStacks, 616, 2);
++        AddTestPack(netCacheBoosters.BoosterStacks, 633, 1);
++        NetCache.Get().SetTestDataNetCacheBoosters(netCacheBoosters);
++
++		return true;
++    }
++
++    private bool OnProcessCheat_hsasettestpacks3(string func, string[] args, string rawArgs)
++    {
++        NetCache.NetCacheBoosters netCacheBoosters = new NetCache.NetCacheBoosters();
++        NetCache.Get().SetTestDataNetCacheBoosters(netCacheBoosters);
++
++		return true;
++    }
++
++    private bool OnProcessCheat_hsaresettestpacks(string func, string[] args, string rawArgs)
++    {
++        NetCache.Get().SetTestDataNetCacheBoosters(null);
++
++		return true;
++    }
++
++    private void AddTestPack(List<NetCache.BoosterStack> boosterStacks, int packId, int packCount)
++    {
++		NetCache.BoosterStack item = new NetCache.BoosterStack
++		{
++			Id = packId,
++			Count = packCount
++		};
++		boosterStacks.Add(item);
++    }
++
++	#endregion
++
++	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/ChestRewardDisplay.cs b/Decompiled/Assembly-CSharp/ChestRewardDisplay.cs
 index 43da71c..95a890f 100644
@@ -23051,6 +24052,24 @@ index f999768..9465a6c 100644
 +	BACON_COMEONECOMEALL = 1789,
 +	EOE
  }
+diff --git a/Decompiled/Assembly-CSharp/GameEntity.cs b/Decompiled/Assembly-CSharp/GameEntity.cs
+index 5c1cf15..0ede2f8 100644
+--- a/Decompiled/Assembly-CSharp/GameEntity.cs
++++ b/Decompiled/Assembly-CSharp/GameEntity.cs
+@@ -1347,4 +1347,13 @@ public class GameEntity : Entity
+ 	public virtual void OnTurnTimerEnded(bool isFriendlyPlayerTurnTimer)
+ 	{
+ 	}
++
++    #region Turn Counter missions
++
++    public virtual bool IsTurnCounterBasedMission()
++    {
++		return false;
++    }
++
++	#endregion
+ }
 diff --git a/Decompiled/Assembly-CSharp/GameMenu.cs b/Decompiled/Assembly-CSharp/GameMenu.cs
 index d544e5f..2388568 100644
 --- a/Decompiled/Assembly-CSharp/GameMenu.cs
@@ -23515,7 +24534,7 @@ index 62cdfe4..f60e531 100644
  		m_table.TryGetValue(key, out var value);
  		return value;
 diff --git a/Decompiled/Assembly-CSharp/GameStrings.cs b/Decompiled/Assembly-CSharp/GameStrings.cs
-index de791dc..bd0115c 100644
+index de791dc..029993f 100644
 --- a/Decompiled/Assembly-CSharp/GameStrings.cs
 +++ b/Decompiled/Assembly-CSharp/GameStrings.cs
 @@ -844,6 +844,8 @@ public class GameStrings
@@ -23549,11 +24568,46 @@ index de791dc..bd0115c 100644
  	}
  
  	public static string GetAssetPath(Locale locale, string fileName, bool native = false)
+@@ -1862,4 +1870,26 @@ public class GameStrings
+ 			return 1;
+ 		}
+ 	}
++
++	#region Accessibility - Used for regression testing
++
++	public static List<string> FindKeysWithValue(string value)
++	{
++		var ret = new List<string>();
++		foreach (GameStringTable table in s_tables.Values)
++		{
++			var values = table.GetAll();
++
++			foreach (var entry in values)
++            {
++				if (entry.Value.Equals(value))
++                {
++					ret.Add(entry.Key);
++                }
++            }
++		}
++		return ret;
++	}
++
++	#endregion
+ }
 diff --git a/Decompiled/Assembly-CSharp/GameUtils.cs b/Decompiled/Assembly-CSharp/GameUtils.cs
-index a79ae24..e56dabd 100644
+index a79ae24..8f1de60 100644
 --- a/Decompiled/Assembly-CSharp/GameUtils.cs
 +++ b/Decompiled/Assembly-CSharp/GameUtils.cs
-@@ -1666,6 +1666,9 @@ public class GameUtils
+@@ -12,6 +12,7 @@ using PegasusShared;
+ using PegasusUtil;
+ using UnityEngine;
+ using UnityEngine.Events;
++using Accessibility;
+ 
+ public class GameUtils
+ {
+@@ -1666,6 +1667,9 @@ public class GameUtils
  
  	public static bool ShouldUseLegacyTutorialFlow()
  	{
@@ -23563,6 +24617,32 @@ index a79ae24..e56dabd 100644
  		NetCache.NetCacheFeatures netObject = NetCache.Get().GetNetObject<NetCache.NetCacheFeatures>();
  		if (netObject == null)
  		{
+@@ -2207,6 +2211,12 @@ public class GameUtils
+ 		{
+ 			return false;
+ 		}
++
++		if (HearthstoneAccessConstants.DEV_MODE)
++        {
++			return true;
++        }
++
+ 		return Options.Get().GetBool(Option.FAKE_PACK_OPENING);
+ 	}
+ 
+@@ -2216,6 +2226,12 @@ public class GameUtils
+ 		{
+ 			return 0;
+ 		}
++
++		if (HearthstoneAccessConstants.DEV_MODE)
++        {
++			return 17;
++        }
++
+ 		return Options.Get().GetInt(Option.FAKE_PACK_COUNT);
+ 	}
+ 
 diff --git a/Decompiled/Assembly-CSharp/Gameplay.cs b/Decompiled/Assembly-CSharp/Gameplay.cs
 index aca5b0b..259abb3 100644
 --- a/Decompiled/Assembly-CSharp/Gameplay.cs
@@ -24737,7 +25817,7 @@ index ccab8d5..c86277a 100644
  						HidePhoneHand();
  						DoEndTurnButton_Option_OnEndTurnRequested();
 diff --git a/Decompiled/Assembly-CSharp/JoustSpellController.cs b/Decompiled/Assembly-CSharp/JoustSpellController.cs
-index d995418..a8bcf79 100644
+index d995418..e43b6e1 100644
 --- a/Decompiled/Assembly-CSharp/JoustSpellController.cs
 +++ b/Decompiled/Assembly-CSharp/JoustSpellController.cs
 @@ -4,6 +4,7 @@ using System.Collections.Generic;
@@ -24766,11 +25846,11 @@ index d995418..a8bcf79 100644
 +
 +		if (card.GetEntity().IsControlledByFriendlySidePlayer())
 +        {
-+			OutputSpeech($"You revealed a {jousterCost} cost {jousterName}");
++			OutputSpeech(LocalizationUtils.Format(LocalizationKey.GAMEPLAY_JOUST_PLAYER_REVEALED_CARD, jousterCost, jousterName));
 +        }
 +		else
 +        {
-+			OutputSpeech($"Your opponent revealed a {jousterCost} cost {jousterName}");
++			OutputSpeech(LocalizationUtils.Format(LocalizationKey.GAMEPLAY_JOUST_OPPONENT_REVEALED_CARD, jousterCost, jousterName));
 +        }
  	}
  
@@ -24786,11 +25866,11 @@ index d995418..a8bcf79 100644
 +
 +		if (player.IsFriendlySide())
 +        {
-+			OutputSpeech("You didn't have any valid card left to reveal");
++			OutputSpeech(LocalizationUtils.Get(LocalizationKey.GAMEPLAY_JOUST_PLAYER_NO_VALID_CARDS));
 +        }
 +		else
 +        {
-+			OutputSpeech("Your opponent didn't have any valid card left to reveal");
++			OutputSpeech(LocalizationUtils.Get(LocalizationKey.GAMEPLAY_JOUST_OPPONENT_NO_VALID_CARDS));
 +        }
  	}
  
@@ -25192,6 +26272,112 @@ index ce5fca1..e82104a 100644
 +
 +	#endregion
  }
+diff --git a/Decompiled/Assembly-CSharp/MissionEntity.cs b/Decompiled/Assembly-CSharp/MissionEntity.cs
+index 7c21fc8..9ac7a11 100644
+--- a/Decompiled/Assembly-CSharp/MissionEntity.cs
++++ b/Decompiled/Assembly-CSharp/MissionEntity.cs
+@@ -1,6 +1,7 @@
+ using System.Collections;
+ using System.Collections.Generic;
+ using UnityEngine;
++using Accessibility;
+ 
+ public class MissionEntity : GameEntity
+ {
+@@ -962,4 +963,93 @@ public class MissionEntity : GameEntity
+ 			responseGroup.m_responseIndex++;
+ 		}
+ 	}
++
++    #region Missions with Turn Counters
++
++	private Notification m_turnCounter;
++
++	private string m_turnCounterText = ""; // Used for reading # of remaining turns when focusing on opponent's Hero
++
++	private bool m_isTurnCounterBasedMission = false; // Used to avoid race conditions after the counter is destroyed
++
++    protected virtual void InitTurnCounterVisuals()
++	{
++		m_isTurnCounterBasedMission = true;
++		int cost = GetCost();
++		InitTurnCounter(cost);
++	}
++
++	private void InitTurnCounter(int cost)
++	{
++		GameObject gameObject = AssetLoader.Get().InstantiatePrefab("LOE_Turn_Timer.prefab:b05530aa55868554fb8f0c66632b3c22");
++		m_turnCounter = gameObject.GetComponent<Notification>();
++		PlayMakerFSM component = m_turnCounter.GetComponent<PlayMakerFSM>();
++		component.FsmVariables.GetFsmBool("RunningMan").Value = false;
++		component.FsmVariables.GetFsmBool("MineCart").Value = false;
++		component.FsmVariables.GetFsmBool("Airship").Value = false;
++		component.FsmVariables.GetFsmBool("Destroyer").Value = true;
++		component.SendEvent("Birth");
++		Actor actor = GameState.Get().GetOpposingSidePlayer().GetHeroCard()
++			.GetActor();
++		m_turnCounter.transform.parent = actor.gameObject.transform;
++		m_turnCounter.transform.localPosition = new Vector3(-1.4f, 0.187f, -0.11f);
++		m_turnCounter.transform.localScale = Vector3.one * 0.52f;
++		UpdateTurnCounterText(cost);
++	}
++
++	protected virtual void UpdateTurnCounterVisualsIfNeeded(TagDelta change)
++    {
++		GAME_TAG tag = (GAME_TAG)change.tag;
++		if (tag == GAME_TAG.COST && change.newValue != change.oldValue)
++		{
++			UpdateTurnCounterVisuals(change.newValue);
++		}
++    }
++
++	private void UpdateTurnCounterVisuals(int cost)
++	{
++		UpdateTurnCounter(cost);
++	}
++
++	private void UpdateTurnCounter(int cost)
++	{
++		m_turnCounter.GetComponent<PlayMakerFSM>().SendEvent("Action");
++		if (cost <= 0)
++		{
++			Object.Destroy(m_turnCounter.gameObject);
++		}
++		else
++		{
++			UpdateTurnCounterText(cost);
++		}
++	}
++
++	private void UpdateTurnCounterText(int cost)
++	{
++		GameStrings.PluralNumber[] pluralNumbers = new GameStrings.PluralNumber[1]
++		{
++			new GameStrings.PluralNumber
++			{
++				m_index = 0,
++				m_number = cost
++			}
++		};
++		string headlineString = GameStrings.FormatPlurals("BOH_GULDAN_01", pluralNumbers);
++		string costString = cost.ToString();
++		m_turnCounter.ChangeDialogText(headlineString, costString, "", "");
++		m_turnCounterText = $"{costString} {headlineString}";
++		AccessibilityMgr.Output(AccessibleGameplay.Get(), m_turnCounterText);
++	}
++
++	public string GetTurnCounterText()
++    {
++		return m_turnCounterText;
++    }
++
++    public override bool IsTurnCounterBasedMission()
++    {
++		return m_isTurnCounterBasedMission;
++    }
++
++    #endregion
+ }
 diff --git a/Decompiled/Assembly-CSharp/MountRewardData.cs b/Decompiled/Assembly-CSharp/MountRewardData.cs
 index 98a724c..f40e67b 100644
 --- a/Decompiled/Assembly-CSharp/MountRewardData.cs
@@ -25502,6 +26688,68 @@ index 283f3b8..868693e 100644
  		{
  			return false;
  		}
+diff --git a/Decompiled/Assembly-CSharp/NetCache.cs b/Decompiled/Assembly-CSharp/NetCache.cs
+index 83bbbbd..20bc008 100644
+--- a/Decompiled/Assembly-CSharp/NetCache.cs
++++ b/Decompiled/Assembly-CSharp/NetCache.cs
+@@ -2109,24 +2109,50 @@ public class NetCache : IService, IHasUpdate
+ 		return GetNetObject<T>() != null;
+ 	}
+ 
++	#region Accessibility
++	private NetCacheBoosters m_testNetCacheBoosters;
++
++    internal void SetTestDataNetCacheBoosters(NetCacheBoosters netCacheBoosters)
++    {
++		m_testNetCacheBoosters = netCacheBoosters;
++    }
++	#endregion
++
+ 	private object GetTestData(Type type)
+ 	{
++		if (type == typeof(NetCacheBoosters) && m_testNetCacheBoosters != null)
++        {
++			return m_testNetCacheBoosters;
++        }
++
+ 		if (type == typeof(NetCacheBoosters) && GameUtils.IsFakePackOpeningEnabled())
+ 		{
+ 			NetCacheBoosters netCacheBoosters = new NetCacheBoosters();
+ 			int fakePackCount = GameUtils.GetFakePackCount();
+-			BoosterStack item = new BoosterStack
+-			{
+-				Id = 1,
+-				Count = fakePackCount
+-			};
+-			netCacheBoosters.BoosterStacks.Add(item);
++			AddTestPack(netCacheBoosters.BoosterStacks, 1, 1);
++			AddTestPack(netCacheBoosters.BoosterStacks, 23, 1);
++			AddTestPack(netCacheBoosters.BoosterStacks, 468, 7);
++			AddTestPack(netCacheBoosters.BoosterStacks, 470, 2);
++			AddTestPack(netCacheBoosters.BoosterStacks, 545, 1);
++			AddTestPack(netCacheBoosters.BoosterStacks, 553, 2);
++			AddTestPack(netCacheBoosters.BoosterStacks, 616, 2);
++			AddTestPack(netCacheBoosters.BoosterStacks, 633, 1);
+ 			return netCacheBoosters;
+ 		}
+ 		return null;
+ 	}
+ 
+-	public void UnloadNetObject<T>()
++    private void AddTestPack(List<BoosterStack> boosterStacks, int packId, int packCount)
++    {
++		BoosterStack item = new BoosterStack
++		{
++			Id = packId,
++			Count = packCount
++		};
++		boosterStacks.Add(item);
++    }
++
++    public void UnloadNetObject<T>()
+ 	{
+ 		Type typeFromHandle = typeof(T);
+ 		m_netCache[typeFromHandle] = null;
 diff --git a/Decompiled/Assembly-CSharp/NotificationManager.cs b/Decompiled/Assembly-CSharp/NotificationManager.cs
 index 79fd88b..4111cbe 100644
 --- a/Decompiled/Assembly-CSharp/NotificationManager.cs
@@ -25897,10 +27145,55 @@ index f5bc7a8..88c2b04 100644
  	public class Info
  	{
 diff --git a/Decompiled/Assembly-CSharp/PackOpening.cs b/Decompiled/Assembly-CSharp/PackOpening.cs
-index 9bf0d61..610250f 100644
+index 9bf0d61..b64b864 100644
 --- a/Decompiled/Assembly-CSharp/PackOpening.cs
 +++ b/Decompiled/Assembly-CSharp/PackOpening.cs
-@@ -628,7 +628,7 @@ public class PackOpening : MonoBehaviour
+@@ -6,8 +6,9 @@ using Hearthstone.Progression;
+ using PegasusShared;
+ using PegasusUtil;
+ using UnityEngine;
++using Accessibility;
+ 
+-public class PackOpening : MonoBehaviour
++public class PackOpening : MonoBehaviour, AccessibleScreen
+ {
+ 	public PackOpeningBones m_Bones;
+ 
+@@ -394,12 +395,12 @@ public class PackOpening : MonoBehaviour
+ 		BnetBar.Get().HideCurrencyTemporarily();
+ 		if (GameUtils.IsFakePackOpeningEnabled())
+ 		{
+-			StartCoroutine(OnFakeBoosterOpened());
++			StartCoroutine(OnFakeBoosterOpened(pack.GetBoosterStack().Id));
+ 		}
+ 		m_UnopenedPackScroller.Pause(pause: true);
+ 	}
+ 
+-	private IEnumerator OnFakeBoosterOpened()
++	private IEnumerator OnFakeBoosterOpened(int boosterId)
+ 	{
+ 		float seconds = Random.Range(0f, 1f);
+ 		yield return new WaitForSeconds(seconds);
+@@ -424,6 +425,10 @@ public class PackOpening : MonoBehaviour
+ 		boosterCard.Def.Name = "EX1_350";
+ 		boosterCard.Def.Premium = TAG_PREMIUM.NORMAL;
+ 		list.Add(boosterCard);
++
++		//
++		m_director.Play(boosterId);
++		m_autoOpenPending = false;
+ 		m_director.OnBoosterOpened(list);
+ 	}
+ 
+@@ -605,6 +610,7 @@ public class PackOpening : MonoBehaviour
+ 			m_InputBlocker.SetActive(value: false);
+ 			CreateDirector();
+ 			LayoutPacks(animate: true);
++			ReadChoosePack();
+ 		}
+ 		BnetBar.Get().RefreshCurrency();
+ 	}
+@@ -628,7 +634,7 @@ public class PackOpening : MonoBehaviour
  			return;
  		}
  		list[0].PlayAlert();
@@ -25909,7 +27202,7 @@ index 9bf0d61..610250f 100644
  		{
  			Bounds bounds = list[0].GetComponent<Collider>().bounds;
  			Vector3 center = bounds.center;
-@@ -657,7 +657,7 @@ public class PackOpening : MonoBehaviour
+@@ -657,7 +663,7 @@ public class PackOpening : MonoBehaviour
  
  	private void ShowHintOnSlot()
  	{
@@ -25918,6 +27211,482 @@ index 9bf0d61..610250f 100644
  		{
  			if (m_hintArrow == null)
  			{
+@@ -730,9 +736,11 @@ public class PackOpening : MonoBehaviour
+ 				unopenedPack.Value.SetEnabled(enabled: true);
+ 			}
+ 		}
++
++		AccessibilityOnUpdateUIEvents();
+ 	}
+ 
+-	private void UnregisterUIEvents()
++    private void UnregisterUIEvents()
+ 	{
+ 		m_enableBackButton = false;
+ 		m_BackButton.SetEnabled(enabled: false);
+@@ -802,21 +810,27 @@ public class PackOpening : MonoBehaviour
+ 		m_DragPlane.SetActive(value: false);
+ 	}
+ 
+-	private void AutomaticallyOpenPack()
++	private void AutomaticallyOpenPack(UnopenedPack pack)
+ 	{
+ 		HideUnopenedPackTooltip();
+-		UnopenedPack value = null;
+-		if (!m_unopenedPacks.TryGetValue(m_lastOpenedBoosterId, out value) || value.GetBoosterStack().Count == 0)
++		UnopenedPack value = pack;
++
++		if (value == null)
+ 		{
+-			foreach (KeyValuePair<int, UnopenedPack> unopenedPack in m_unopenedPacks)
++			// Normal HS flow
++			if (!m_unopenedPacks.TryGetValue(m_lastOpenedBoosterId, out value) || value.GetBoosterStack().Count == 0)
+ 			{
+-				if (!(unopenedPack.Value == null) && unopenedPack.Value.GetBoosterStack().Count > 0)
++				foreach (KeyValuePair<int, UnopenedPack> unopenedPack in m_unopenedPacks)
+ 				{
+-					value = unopenedPack.Value;
+-					break;
++					if (!(unopenedPack.Value == null) && unopenedPack.Value.GetBoosterStack().Count > 0)
++					{
++						value = unopenedPack.Value;
++						break;
++					}
+ 				}
+ 			}
+ 		}
++
+ 		if (!(value == null) && value.CanOpenPack())
+ 		{
+ 			if (m_draggedPack != null || m_InputBlocker.activeSelf)
+@@ -942,7 +956,7 @@ public class PackOpening : MonoBehaviour
+ 			yield return null;
+ 		}
+ 		yield return new WaitForSeconds(waitTime);
+-		AutomaticallyOpenPack();
++		AutomaticallyOpenPack(null);
+ 	}
+ 
+ 	private void OnPackOpeningFXLoaded(AssetReference assetRef, GameObject go, object callbackData)
+@@ -1003,4 +1017,161 @@ public class PackOpening : MonoBehaviour
+ 		DialogManager.Get().ShowReconnectHelperDialog();
+ 		Navigation.Clear();
+ 	}
++
++    #region Accessibility
++	private enum AccessibleState { LOADING, CHOOSING_PACK };
++
++	private AccessibleState m_curAccessibleState;
++	private AccessibleListOfItems<AccessibleUnopenedPack> m_accessiblePacks;
++
++    private void AccessibilityOnUpdateUIEvents()
++    {
++		AccessibilityMgr.SetScreen(this);
++    }
++
++    private void ReadChoosePack()
++    {
++		m_curAccessibleState = AccessibleState.CHOOSING_PACK;
++
++		if (GetNumUnopenedPacks() == 0)
++        {
++			// Players can't enter the screen if they don't have card packs. The screen sends them back to Hub if they've opened all
++			return;
++        }
++
++		if (m_accessiblePacks != null && m_accessiblePacks.Count == GetNumUnopenedPacks())
++        {
++			m_accessiblePacks.StartReading();
++			return;
++        }
++
++		var unopenedPacks = GetSortedUnopenedPacks();
++		var accessiblePacks = new List<AccessibleUnopenedPack>();
++
++        foreach (var pack in unopenedPacks)
++        {
++			if (pack.GetBoosterStack().Count > 0)
++            {
++                accessiblePacks.Add(new AccessibleUnopenedPack(this, pack));
++            }
++        }
++
++		m_accessiblePacks = new AccessibleListOfItems<AccessibleUnopenedPack>(this, accessiblePacks);
++		AccessibilityMgr.Output(this, LocalizationUtils.Get(LocalizationKey.GLOBAL_OPEN_PACKS));
++		m_accessiblePacks.StartReading();
++        AccessibilityUtils.CenterScrollbarAroundObject(m_UnopenedPackScroller, m_accessiblePacks.GetItemBeingRead().GetUnopenedPack().gameObject);
++    }
++
++    private List<UnopenedPack> GetSortedUnopenedPacks()
++    {
++		// Index by game object to compare
++		var gameObjectIndex = new Dictionary<GameObject, int>();
++		var spacedObjects = m_UnopenedPackContainer.m_Objects;
++		for (var i = 0; i < spacedObjects.Count; i++) 
++        {
++			var spacedObject = spacedObjects[i];
++			if (spacedObject != null && spacedObject.m_Object != null)
++            {
++                gameObjectIndex.Add(spacedObject.m_Object, i);
++            }
++        }
++
++		// Use index to sort
++		var ret = new List<UnopenedPack>();
++		ret.AddRange(m_unopenedPacks.Values);
++		ret.RemoveAll(p => p.GetBoosterStack().Count == 0);
++		ret.Sort((a, b) => gameObjectIndex[a.gameObject] - gameObjectIndex[b.gameObject]);
++
++		return ret;
++    }
++
++    private int GetNumUnopenedPacks()
++    {
++		int ret = 0;
++
++		foreach (var entry in m_unopenedPacks)
++        {
++			if (entry.Value.GetBoosterStack().Count > 0)
++            {
++				ret++;
++            }
++        }
++
++		return ret;
++    }
++
++    private bool FinishedLoadingPacks()
++    {
++        foreach (var pack in m_unopenedPacksLoading)
++        {
++			if (pack.Value)
++            {
++				return false;
++            }
++        }
++
++		return true;
++    }
++
++    public void HandleInput()
++    {
++		if (m_curAccessibleState == AccessibleState.LOADING)
++        {
++			if (FinishedLoadingPacks())
++            {
++				ReadChoosePack();
++				return;
++            }
++        }
++		else if (m_curAccessibleState == AccessibleState.CHOOSING_PACK)
++        {
++			if (AccessibleKey.CONFIRM.IsPressed())
++            {
++				// TODO: Locked, open, etc
++				TryOpenPack();
++            }
++			else if (AccessibleKey.BACK.IsPressed())
++            {
++				m_BackButton.TriggerRelease();
++            }
++			else if (m_accessiblePacks.HandleAccessibleInput())
++			{
++				AccessibilityUtils.CenterScrollbarAroundObject(m_UnopenedPackScroller, m_accessiblePacks.GetItemBeingRead().GetUnopenedPack().gameObject);
++			}
++        }
++    }
++
++    private void TryOpenPack()
++    {
++		var curPack = m_accessiblePacks.GetItemBeingRead();
++
++		if (curPack.IsLocked())
++        {
++			AccessibilityMgr.Output(this, curPack.GetLockedRibbonText());
++        }
++		else
++        {
++			AutomaticallyOpenPack(curPack.GetUnopenedPack());
++        }
++    }
++
++    public string GetHelp()
++    {
++		if (m_curAccessibleState == AccessibleState.LOADING)
++        {
++			return LocalizedText.GLOBAL_LOADING;
++        }
++		else if (m_curAccessibleState == AccessibleState.CHOOSING_PACK)
++        {
++			return m_accessiblePacks?.GetHelp(true);
++        }
++
++		return "";
++    }
++
++    public void OnGainedFocus()
++    {
++    }
++
++    #endregion
+ }
+diff --git a/Decompiled/Assembly-CSharp/PackOpeningButton.cs b/Decompiled/Assembly-CSharp/PackOpeningButton.cs
+index 6fbb2eb..7afa78b 100644
+--- a/Decompiled/Assembly-CSharp/PackOpeningButton.cs
++++ b/Decompiled/Assembly-CSharp/PackOpeningButton.cs
+@@ -6,6 +6,9 @@ public class PackOpeningButton : BoxMenuButton
+ 
+ 	public GameObject m_countFrame;
+ 
++	// Accessibility
++	public int m_numPacks;
++
+ 	public string GetGetPackCount()
+ 	{
+ 		return m_count.Text;
+@@ -13,6 +16,8 @@ public class PackOpeningButton : BoxMenuButton
+ 
+ 	public void SetPackCount(int packs)
+ 	{
++		m_numPacks = packs;
++
+ 		if (packs < 0)
+ 		{
+ 			m_count.Text = "";
+diff --git a/Decompiled/Assembly-CSharp/PackOpeningCard.cs b/Decompiled/Assembly-CSharp/PackOpeningCard.cs
+index 149bfb2..70343c6 100644
+--- a/Decompiled/Assembly-CSharp/PackOpeningCard.cs
++++ b/Decompiled/Assembly-CSharp/PackOpeningCard.cs
+@@ -26,13 +26,13 @@ public class PackOpeningCard : MonoBehaviour
+ 
+ 	private NetCache.BoosterCard m_boosterCard;
+ 
+-	private TAG_PREMIUM m_premium;
++	internal TAG_PREMIUM m_premium;
+ 
+ 	private DefLoader.DisposableFullDef m_fullDef;
+ 
+ 	private Actor m_actor;
+ 
+-	private PackOpeningCardRarityInfo m_rarityInfo;
++	internal PackOpeningCardRarityInfo m_rarityInfo;
+ 
+ 	private Spell m_spell;
+ 
+@@ -46,7 +46,7 @@ public class PackOpeningCard : MonoBehaviour
+ 
+ 	private bool m_revealed;
+ 
+-	private bool m_isNew;
++	internal bool m_isNew;
+ 
+ 	private List<RevealedListener> m_revealedListeners = new List<RevealedListener>();
+ 
+@@ -206,17 +206,17 @@ public class PackOpeningCard : MonoBehaviour
+ 	{
+ 		if (fullDef == null)
+ 		{
+-			Debug.LogError($"PackOpeningCard.OnFullDefLoaded() - FAILED to load \"{cardId}\"");
++            Debug.LogError($"PackOpeningCard.OnFullDefLoaded() - FAILED to load \"{cardId}\"");
+ 			return;
+ 		}
+ 		DisposeFullDef();
+ 		m_fullDef = fullDef;
+ 		if (DetermineRarityInfo())
+ 		{
+-			AssetLoader.Get().InstantiatePrefab(ActorNames.GetHandActor(m_fullDef.EntityDef, m_premium), OnActorLoaded, null, AssetLoadingOptions.IgnorePrefabPosition);
+-			if (Cheats.Get().IsNewCardInPackOpeningEnabed())
++            AssetLoader.Get().InstantiatePrefab(ActorNames.GetHandActor(m_fullDef.EntityDef, m_premium), OnActorLoaded, null, AssetLoadingOptions.IgnorePrefabPosition);
++            if (Cheats.Get().IsNewCardInPackOpeningEnabed())
+ 			{
+-				CollectibleCard card = CollectionManager.Get().GetCard(m_fullDef.EntityDef.GetCardId(), m_premium);
++                CollectibleCard card = CollectionManager.Get().GetCard(m_fullDef.EntityDef.GetCardId(), m_premium);
+ 				m_isNew = card.SeenCount < 1 && card.OwnedCount < 2;
+ 			}
+ 		}
+@@ -232,10 +232,10 @@ public class PackOpeningCard : MonoBehaviour
+ 	{
+ 		if (go == null)
+ 		{
+-			Debug.LogError($"PackOpeningCard.OnActorLoaded() - FAILED to load actor \"{assetRef}\"");
++            Debug.LogError($"PackOpeningCard.OnActorLoaded() - FAILED to load actor \"{assetRef}\"");
+ 			return;
+ 		}
+-		Actor component = go.GetComponent<Actor>();
++        Actor component = go.GetComponent<Actor>();
+ 		if (component == null)
+ 		{
+ 			Debug.LogError($"PackOpeningCard.OnActorLoaded() - ERROR actor \"{base.name}\" has no Actor component");
+@@ -468,7 +468,7 @@ public class PackOpeningCard : MonoBehaviour
+ 		}
+ 	}
+ 
+-	private string GetClassName()
++	internal string GetClassName()
+ 	{
+ 		TAG_CLASS @class = m_fullDef.EntityDef.GetClass();
+ 		if (m_fullDef.EntityDef.IsMultiClass())
+diff --git a/Decompiled/Assembly-CSharp/PackOpeningDirector.cs b/Decompiled/Assembly-CSharp/PackOpeningDirector.cs
+index 061d9ad..8ca1073 100644
+--- a/Decompiled/Assembly-CSharp/PackOpeningDirector.cs
++++ b/Decompiled/Assembly-CSharp/PackOpeningDirector.cs
+@@ -4,9 +4,10 @@ using System.Collections.Generic;
+ using System.Linq;
+ using Hearthstone.Progression;
+ using UnityEngine;
++using Accessibility;
+ 
+ [CustomEditClass]
+-public class PackOpeningDirector : MonoBehaviour
++public class PackOpeningDirector : MonoBehaviour, AccessibleUI
+ {
+ 	public delegate void FinishedCallback(object userData);
+ 
+@@ -199,6 +200,7 @@ public class PackOpeningDirector : MonoBehaviour
+ 			this.OnDoneOpeningPack();
+ 		}
+ 		HideKeywordTooltips();
++		AccessibilityMgr.HideUI(this);
+ 		return true;
+ 	}
+ 
+@@ -282,6 +284,7 @@ public class PackOpeningDirector : MonoBehaviour
+ 			hiddenCard.EnableReveal(enable: true);
+ 		}
+ 		AttachCardsToCarousel();
++		ReadCards();
+ 	}
+ 
+ 	private void CameraBlurOn()
+@@ -412,6 +415,8 @@ public class PackOpeningDirector : MonoBehaviour
+ 	private void OnDoneButtonShown(Spell spell, object userData)
+ 	{
+ 		m_doneButton.AddEventListener(UIEventType.RELEASE, OnDoneButtonPressed);
++
++		AccessibilityMgr.Output(this, GetAccessibleHelp());
+ 	}
+ 
+ 	private void HideDoneButton()
+@@ -495,6 +500,11 @@ public class PackOpeningDirector : MonoBehaviour
+ 				BnetPresenceMgr.Get().SetGameField(4u, packOpeningCard.GetCardId() + ",0");
+ 			}
+ 		}
++
++		// a11y
++		AccessibilityOnRevealedCard(packOpeningCard);
++		// a11y
++
+ 		m_cardsPendingReveal--;
+ 		if (m_cardsPendingReveal <= 0)
+ 		{
+@@ -503,7 +513,7 @@ public class PackOpeningDirector : MonoBehaviour
+ 		}
+ 	}
+ 
+-	private void OnHiddenCardSpellFinished(Spell spell, object userData)
++    private void OnHiddenCardSpellFinished(Spell spell, object userData)
+ 	{
+ 		OnEffectFinished();
+ 	}
+@@ -524,7 +534,7 @@ public class PackOpeningDirector : MonoBehaviour
+ 		{
+ 			yield return null;
+ 			NetCache.BoosterCard boosterCard = cards[i];
+-			m_hiddenCards[i].AttachBoosterCard(boosterCard);
++            m_hiddenCards[i].AttachBoosterCard(boosterCard);
+ 			int num = i + 1;
+ 			i = num;
+ 		}
+@@ -556,4 +566,89 @@ public class PackOpeningDirector : MonoBehaviour
+ 			array[i].Fire();
+ 		}
+ 	}
++
++	#region Accessibility
++
++	private AccessibleListOfItems<AccessiblePackOpeningCard> m_accessiblePackOpeningCards;
++
++	private void ReadCards()
++    {
++		AccessibilityMgr.ShowUI(this);
++
++		var accessiblePackOpeningCards = new List<AccessiblePackOpeningCard>();
++		foreach(var card in m_hiddenCards)
++        {
++			accessiblePackOpeningCards.Add(new AccessiblePackOpeningCard(this, card));
++        }
++
++		m_accessiblePackOpeningCards = new AccessibleListOfItems<AccessiblePackOpeningCard>(this, accessiblePackOpeningCards);
++		m_accessiblePackOpeningCards.StartReading();
++		AccessibleInputMgr.MoveMouseTo(m_accessiblePackOpeningCards.GetItemBeingRead().GetPackOpeningCard());
++    }
++
++    public void HandleAccessibleInput()
++    {
++		if (AccessibleKey.CONFIRM.IsPressed() || AccessibleKey.SPACE.IsPressed())
++        {
++			if (m_doneButtonShown)
++            {
++				m_doneButton.TriggerRelease();
++            }
++			else
++            {
++                TryRevealCard();
++            }
++        }
++		else if (AccessibleKey.READ_TOOLTIP.IsPressed())
++        {
++            AccessibilityUtils.ReadTooltip(this);
++        }
++		else
++        {
++			if (m_accessiblePackOpeningCards?.HandleAccessibleInput() ?? false)
++            {
++				AccessibleInputMgr.MoveMouseTo(m_accessiblePackOpeningCards.GetItemBeingRead().GetPackOpeningCard());
++            }
++        }
++    }
++
++    private void TryRevealCard()
++    {
++		var curCard = m_accessiblePackOpeningCards.GetItemBeingRead().GetPackOpeningCard();
++
++		if (!curCard.IsRevealed())
++		{
++			curCard.ForceReveal();
++		}
++    }
++
++    public string GetAccessibleHelp()
++    {
++		if (m_doneButtonShown)
++        {
++			return AccessibleSpeech.PRESS_ENTER_TO_CONTINUE;
++        }
++		else
++        {
++			return LocalizationUtils.Format(LocalizationKey.SCREEN_PACK_OPENING_OPEN_CARDS_HELP, AccessibleKey.CONFIRM);
++        }
++    }
++
++	public List<PackOpeningCard> GetRevealedCards()
++    {
++		return m_hiddenCards;
++    }
++
++    private void AccessibilityOnRevealedCard(PackOpeningCard revealedCard)
++    {
++		foreach (var card in m_accessiblePackOpeningCards.Items)
++        {
++			if (card.GetPackOpeningCard() == revealedCard)
++            {
++				card.ReadLine();
++            }
++        }
++    }
++
++	#endregion
+ }
 diff --git a/Decompiled/Assembly-CSharp/PopupDisplayManager.cs b/Decompiled/Assembly-CSharp/PopupDisplayManager.cs
 index fa53b17..551467b 100644
 --- a/Decompiled/Assembly-CSharp/PopupDisplayManager.cs
@@ -26304,10 +28073,13 @@ index 2a67bf4..a2ce113 100644
  public class PowerSpellController : SpellController
  {
 diff --git a/Decompiled/Assembly-CSharp/PowerTask.cs b/Decompiled/Assembly-CSharp/PowerTask.cs
-index d1a44cd..c786b80 100644
+index d1a44cd..9682c13 100644
 --- a/Decompiled/Assembly-CSharp/PowerTask.cs
 +++ b/Decompiled/Assembly-CSharp/PowerTask.cs
-@@ -3,6 +3,8 @@ using PegasusGame;
+@@ -1,8 +1,11 @@
++using System;
+ using System.Collections.Generic;
+ using PegasusGame;
  
  public class PowerTask
  {
@@ -26316,7 +28088,7 @@ index d1a44cd..c786b80 100644
  	public delegate void TaskCompleteCallback();
  
  	private Network.PowerHistory m_power;
-@@ -11,6 +13,8 @@ public class PowerTask
+@@ -11,6 +14,8 @@ public class PowerTask
  
  	private TaskCompleteCallback m_onCompleted;
  
@@ -26325,7 +28097,7 @@ index d1a44cd..c786b80 100644
  	public Network.PowerHistory GetPower()
  	{
  		return m_power;
-@@ -40,6 +44,11 @@ public class PowerTask
+@@ -40,6 +45,11 @@ public class PowerTask
  		m_onCompleted = onComplete;
  	}
  
@@ -26337,7 +28109,7 @@ index d1a44cd..c786b80 100644
  	private bool IsZoneTransition(TAG_ZONE fromZone, TAG_ZONE toZone)
  	{
  		if (IsCompleted())
-@@ -95,7 +104,8 @@ public class PowerTask
+@@ -95,7 +105,8 @@ public class PowerTask
  
  	public void DoRealTimeTask(List<Network.PowerHistory> powerList, int index)
  	{
@@ -26347,7 +28119,12 @@ index d1a44cd..c786b80 100644
  		switch (m_power.Type)
  		{
  		case Network.PowerType.CREATE_GAME:
-@@ -154,6 +164,7 @@ public class PowerTask
+@@ -150,10 +161,11 @@ public class PowerTask
+ 		}
+ 	}
+ 
+-	public void DoTask()
++    public void DoTask()
  	{
  		if (!m_completed)
  		{
@@ -26355,7 +28132,7 @@ index d1a44cd..c786b80 100644
  			GameState gameState = GameState.Get();
  			switch (m_power.Type)
  			{
-@@ -228,6 +239,7 @@ public class PowerTask
+@@ -228,6 +240,7 @@ public class PowerTask
  	{
  		if (!m_completed)
  		{
@@ -26363,6 +28140,68 @@ index d1a44cd..c786b80 100644
  			GameState gameState = GameState.Get();
  			switch (m_power.Type)
  			{
+@@ -351,4 +364,61 @@ public class PowerTask
+ 		}
+ 		return $"[id={netEntity.ID} cardId={netEntity.CardID} name={entityLogName}]";
+ 	}
++
++	#region Accessibility
++
++	public bool IsCardTrade(int entityId)
++    {
++		Network.PowerHistory power = GetPower();
++
++		if (power.Type == Network.PowerType.TAG_CHANGE)
++		{
++			Network.HistTagChange histTagChange = (Network.HistTagChange)power;
++			if (histTagChange.Tag == (int)GAME_TAG.IS_USING_TRADE_OPTION && histTagChange.Value == 1)
++			{
++				return true;
++			}
++		}
++		else if (power.Type == Network.PowerType.SHOW_ENTITY)
++        {
++			Network.HistShowEntity histShowEntity = (Network.HistShowEntity)power;
++			var entity = histShowEntity.Entity;
++
++			if (entity != null && entity.ID == entityId)
++            {
++				foreach (var tag in entity.Tags)
++                {
++					if (tag.Name == (int)GAME_TAG.IS_USING_TRADE_OPTION && tag.Value == 1)
++                    {
++						return true;
++                    }
++                }
++            }
++        }
++
++        return false;
++    }
++
++    public bool IsShowStartOfGameCard()
++    {
++		Network.PowerHistory power = GetPower();
++
++		if (power.Type == Network.PowerType.SHOW_ENTITY)
++        {
++			Network.HistShowEntity histShowEntity = (Network.HistShowEntity)power;
++			var entity = histShowEntity.Entity;
++
++            foreach (var tag in entity.Tags)
++            {
++                if (tag.Name == (int)GAME_TAG.START_OF_GAME && tag.Value == 1)
++                {
++                    return true;
++                }
++            }
++        }
++
++        return false;
++    }
++
++    #endregion
+ }
 diff --git a/Decompiled/Assembly-CSharp/PowerTaskList.cs b/Decompiled/Assembly-CSharp/PowerTaskList.cs
 index 22f279d..aaf5d5a 100644
 --- a/Decompiled/Assembly-CSharp/PowerTaskList.cs
@@ -26534,20 +28373,75 @@ index ae7d38f..4ffae03 100644
  			if (practiceAIButton == m_selectedPracticeAIButton)
  			{
 diff --git a/Decompiled/Assembly-CSharp/PrivacyFeaturesPopup.cs b/Decompiled/Assembly-CSharp/PrivacyFeaturesPopup.cs
-index 1d7249c..1830267 100644
+index 1d7249c..581c813 100644
 --- a/Decompiled/Assembly-CSharp/PrivacyFeaturesPopup.cs
 +++ b/Decompiled/Assembly-CSharp/PrivacyFeaturesPopup.cs
-@@ -2,8 +2,9 @@ using System;
+@@ -2,6 +2,7 @@ using System;
  using System.Collections;
  using System.Collections.Generic;
  using UnityEngine;
 +using Accessibility;
  
--public class PrivacyFeaturesPopup : DialogBase
-+public class PrivacyFeaturesPopup : InaccessibleDialogBase
+ public class PrivacyFeaturesPopup : DialogBase
  {
- 	private enum DialogState
- 	{
+@@ -260,6 +261,8 @@ public class PrivacyFeaturesPopup : DialogBase
+ 		m_buttonBlocked = true;
+ 		AnimationUtil.ShowWithPunch(base.gameObject, HIDDEN_SCALE, 1.1f * NORMAL_SCALE, NORMAL_SCALE, null, noFade: true);
+ 		FullScreenFXMgr.Get()?.StartStandardBlurVignette(0.1f);
++
++		ReadPopup();
+ 	}
+ 
+ 	public override void Hide()
+@@ -267,4 +270,48 @@ public class PrivacyFeaturesPopup : DialogBase
+ 		FullScreenFXMgr.Get()?.EndStandardBlurVignette(0.1f);
+ 		base.Hide();
+ 	}
++
++    #region Accessibility
++
++	private AccessibleMenu m_accessibleMenu;
++
++    protected void ReadPopup()
++    {
++		m_accessibleMenu = new AccessibleMenu(this, LocalizedText.GLOBAL_OPTIONS, null, true);
++
++		if (m_choiceOneButton != null && m_choiceOneButton.isActiveAndEnabled)
++        {
++			m_accessibleMenu.AddOption(m_choiceOneButton.GetText(), () => m_choiceOneButton.TriggerRelease());
++        }
++
++		if (m_choiceTwoButton != null && m_choiceTwoButton.isActiveAndEnabled)
++        {
++			m_accessibleMenu.AddOption(m_choiceTwoButton.GetText(), () => m_choiceTwoButton.TriggerRelease());
++        }
++
++		if (m_continueButton != null && m_continueButton.isActiveAndEnabled)
++        {
++			m_accessibleMenu.AddOption(m_choiceTwoButton.GetText(), () => m_choiceTwoButton.TriggerRelease());
++        }
++
++		AccessibilityMgr.ShowUI(this);
++		AccessibilityMgr.Output(this, LocalizedText.UI_POPUP, true);
++		AccessibilityMgr.Output(this, GameStrings.Get(m_titleText.Text));
++		AccessibilityMgr.Output(this, GameStrings.Get(m_searchText.Text));
++		AccessibilityMgr.Output(this, GameStrings.Get(m_successText.Text));
++
++		m_accessibleMenu.StartReading();
++    }
++
++    public override void HandleAccessibleInput()
++    {
++        m_accessibleMenu?.HandleAccessibleInput();
++    }
++
++    public override string GetAccessibleHelp()
++    {
++		return m_accessibleMenu?.GetHelp();
++    }
++
++	#endregion
+ }
 diff --git a/Decompiled/Assembly-CSharp/PrivacyPolicyPopup.cs b/Decompiled/Assembly-CSharp/PrivacyPolicyPopup.cs
 index 9726a07..6feb577 100644
 --- a/Decompiled/Assembly-CSharp/PrivacyPolicyPopup.cs
