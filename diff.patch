@@ -1,5 +1,5 @@
 diff --git a/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs b/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
-index 0f54b25..e80031b 100644
+index 52b1c21..f5361d7 100644
 --- a/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
 @@ -5,8 +5,9 @@ using Hearthstone.DataModels;
@@ -9037,10 +9037,10 @@ index 0000000..a2fd21e
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessiblePlayDescriber.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessiblePlayDescriber.cs
 new file mode 100644
-index 0000000..ac3a7f8
+index 0000000..bb25da1
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessiblePlayDescriber.cs
-@@ -0,0 +1,522 @@
+@@ -0,0 +1,523 @@
 +﻿using Assets;
 +using System;
 +using System.Collections.Generic;
@@ -9130,8 +9130,9 @@ index 0000000..ac3a7f8
 +                return true;
 +            }
 +
-+            if (card.IsControlledByOpposingSidePlayer())
++            if (card.GetController() != null && card.IsControlledByOpposingSidePlayer())
 +            {
++                // card.GetController() is needed due to potential NPEs in some triggers
 +                // e.g. Baku the Mooneater
 +                foreach (var task in taskList.GetTaskList())
 +                {
@@ -14307,7 +14308,7 @@ index 0000000..9473d38
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 0000000..12b7361
+index 0000000..006a508
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -14317,9 +14318,9 @@ index 0000000..12b7361
 +{
 +    public class HearthstoneAccessConstants
 +    {
-+        public static string HEARTHSTONE_VERSION = "21.2.0.91456";
++        public static string HEARTHSTONE_VERSION = "21.3.0.93849";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "8";
++        public static string HEARTHSTONE_ACCESS_VERSION = "9";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -20106,7 +20107,7 @@ index f63bd61..50c2dc0 100644
  				bool allPopupsShown = false;
  				if (AdventureScene.Get().IsDevMode)
 diff --git a/Decompiled/Assembly-CSharp/AdventureChooserTray.cs b/Decompiled/Assembly-CSharp/AdventureChooserTray.cs
-index 056d0ca..f0bb156 100644
+index b12f0e8..550fe2b 100644
 --- a/Decompiled/Assembly-CSharp/AdventureChooserTray.cs
 +++ b/Decompiled/Assembly-CSharp/AdventureChooserTray.cs
 @@ -50,6 +50,7 @@ public class AdventureChooserTray : AccordionMenuTray
@@ -21888,7 +21889,7 @@ index be1e317..a18cdf1 100644
  	}
  
 diff --git a/Decompiled/Assembly-CSharp/Cheats.cs b/Decompiled/Assembly-CSharp/Cheats.cs
-index b04fb6e..78b8bc3 100644
+index 948f0bc..8dea717 100644
 --- a/Decompiled/Assembly-CSharp/Cheats.cs
 +++ b/Decompiled/Assembly-CSharp/Cheats.cs
 @@ -36,6 +36,7 @@ using PegasusUtil;
@@ -21938,7 +21939,7 @@ index b04fb6e..78b8bc3 100644
  			cheatMgr.RegisterCheatHandler("rankrefresh", OnProcessCheat_rankrefresh, "Request medalinfo from server and show rankchange twoscoop after receiving it");
  			cheatMgr.RegisterCheatHandler("rankchange", OnProcessCheat_rankchange, "Show a fake rankchange twoscoop", "[rank] [up|down|win|loss] [wild] [winstreak] [chest]", "bronze5 up chest");
  			cheatMgr.RegisterCheatHandler("rankreward", OnProcessCheat_rankreward, "Show a fake RankedRewardDisplay for rank (or all ranks up to a rank)", "<rank> [standard|wild|classic|all]", "bronze5 all");
-@@ -671,7 +695,7 @@ public class Cheats : IService
+@@ -672,7 +696,7 @@ public class Cheats : IService
  		yield break;
  	}
  
@@ -21947,7 +21948,7 @@ index b04fb6e..78b8bc3 100644
  	{
  		return new Type[2]
  		{
-@@ -3071,8 +3095,10 @@ public class Cheats : IService
+@@ -3072,8 +3096,10 @@ public class Cheats : IService
  		}
  		if (flag)
  		{
@@ -21960,7 +21961,7 @@ index b04fb6e..78b8bc3 100644
  			QuestToast.ShowQuestToast(UserAttentionBlocker.ALL, null, updateCacheValues: false, achievement);
  		}
  		else
-@@ -3463,7 +3489,7 @@ public class Cheats : IService
+@@ -3464,7 +3490,7 @@ public class Cheats : IService
  
  	private bool OnProcessCheat_setRotationRotatedBoostersPopup(string func, string[] args, string rawArgs)
  	{
@@ -21969,7 +21970,7 @@ index b04fb6e..78b8bc3 100644
  		DialogManager.Get().ShowSetRotationTutorialPopup(UserAttentionBlocker.SET_ROTATION_INTRO, info);
  		return true;
  	}
-@@ -10270,7 +10296,7 @@ public class Cheats : IService
+@@ -10271,7 +10297,7 @@ public class Cheats : IService
  
  	private bool OnProcessCheat_showtrackreward(string func, string[] args, string rawArgs)
  	{
@@ -21978,7 +21979,7 @@ index b04fb6e..78b8bc3 100644
  		if (!int.TryParse(args[0], out var level))
  		{
  			UIStatus.Get().AddInfo(message);
-@@ -10281,6 +10307,7 @@ public class Cheats : IService
+@@ -10282,6 +10308,7 @@ public class Cheats : IService
  		{
  			bool.TryParse(args[1], out result);
  		}
@@ -21986,7 +21987,7 @@ index b04fb6e..78b8bc3 100644
  		RewardTrackLevelDbfRecord rewardTrackLevelDbfRecord = RewardTrackManager.Get().RewardTrackAsset.Levels.Where((RewardTrackLevelDbfRecord r) => r.Level == level).FirstOrDefault();
  		if (rewardTrackLevelDbfRecord == null)
  		{
-@@ -10300,6 +10327,10 @@ public class Cheats : IService
+@@ -10301,6 +10328,10 @@ public class Cheats : IService
  			}
  			return true;
  		}
@@ -21997,7 +21998,7 @@ index b04fb6e..78b8bc3 100644
  		RewardScroll.DebugShowFake(RewardTrackFactory.CreateRewardScrollDataModel(num, level));
  		return true;
  	}
-@@ -10433,4 +10464,234 @@ public class Cheats : IService
+@@ -10440,4 +10471,234 @@ public class Cheats : IService
  		}
  		return true;
  	}
@@ -22568,7 +22569,7 @@ index 314a963..1a2323d 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/CollectionManagerDisplay.cs b/Decompiled/Assembly-CSharp/CollectionManagerDisplay.cs
-index 4332800..e125e5a 100644
+index 2e35cf0..6b4d3cf 100644
 --- a/Decompiled/Assembly-CSharp/CollectionManagerDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/CollectionManagerDisplay.cs
 @@ -10,6 +10,7 @@ using Hearthstone;
@@ -22843,7 +22844,7 @@ index 5498c61..40aa890 100644
  
  	private void OnRetireButtonReleased(UIEvent e)
 diff --git a/Decompiled/Assembly-CSharp/DeckPickerTrayDisplay.cs b/Decompiled/Assembly-CSharp/DeckPickerTrayDisplay.cs
-index 52feed4..4a4c587 100644
+index ef9ff34..a3c55f7 100644
 --- a/Decompiled/Assembly-CSharp/DeckPickerTrayDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/DeckPickerTrayDisplay.cs
 @@ -8,6 +8,7 @@ using Hearthstone.DataModels;
@@ -23012,7 +23013,7 @@ index 52feed4..4a4c587 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/DeckTemplatePicker.cs b/Decompiled/Assembly-CSharp/DeckTemplatePicker.cs
-index c663fd9..20a9eeb 100644
+index 210c6cc..11ca04f 100644
 --- a/Decompiled/Assembly-CSharp/DeckTemplatePicker.cs
 +++ b/Decompiled/Assembly-CSharp/DeckTemplatePicker.cs
 @@ -5,8 +5,9 @@ using Blizzard.T5.Core;
@@ -23227,7 +23228,7 @@ index c663fd9..20a9eeb 100644
 +    #endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/DeckTrayCardListContent.cs b/Decompiled/Assembly-CSharp/DeckTrayCardListContent.cs
-index e9c4c5b..55c2ee2 100644
+index 3ebd84e..ac83f04 100644
 --- a/Decompiled/Assembly-CSharp/DeckTrayCardListContent.cs
 +++ b/Decompiled/Assembly-CSharp/DeckTrayCardListContent.cs
 @@ -4,6 +4,7 @@ using System.Collections.Generic;
@@ -23295,10 +23296,10 @@ index f5ff7f0..038a3ed 100644
  	protected int m_centeringDeckList = -1;
  
 diff --git a/Decompiled/Assembly-CSharp/DeckTrayDeckTileVisual.cs b/Decompiled/Assembly-CSharp/DeckTrayDeckTileVisual.cs
-index 4fd9e77..12e15fe 100644
+index f2dc593..31c79f4 100644
 --- a/Decompiled/Assembly-CSharp/DeckTrayDeckTileVisual.cs
 +++ b/Decompiled/Assembly-CSharp/DeckTrayDeckTileVisual.cs
-@@ -156,7 +156,7 @@ public class DeckTrayDeckTileVisual : PegUIElement
+@@ -157,7 +157,7 @@ public class DeckTrayDeckTileVisual : PegUIElement
  		m_actor.UpdateGhostTileEffect();
  	}
  
@@ -23986,7 +23987,7 @@ index 869b7b1..9adbc09 100644
  	public class Info
  	{
 diff --git a/Decompiled/Assembly-CSharp/FriendChallengeMgr.cs b/Decompiled/Assembly-CSharp/FriendChallengeMgr.cs
-index 798f7fc..7c79804 100644
+index fcdefac..44065cc 100644
 --- a/Decompiled/Assembly-CSharp/FriendChallengeMgr.cs
 +++ b/Decompiled/Assembly-CSharp/FriendChallengeMgr.cs
 @@ -2239,7 +2239,7 @@ public class FriendChallengeMgr
@@ -24446,7 +24447,7 @@ index 494224c..27e4c00 100644
  		return value > 0;
  	}
 diff --git a/Decompiled/Assembly-CSharp/GameState.cs b/Decompiled/Assembly-CSharp/GameState.cs
-index 4d0f248..1ccb464 100644
+index d81afbd..a1587a0 100644
 --- a/Decompiled/Assembly-CSharp/GameState.cs
 +++ b/Decompiled/Assembly-CSharp/GameState.cs
 @@ -7,6 +7,7 @@ using System.Text;
@@ -24676,7 +24677,7 @@ index e7e7462..6857df7 100644
  
  	private void HideMessage()
 diff --git a/Decompiled/Assembly-CSharp/GeneralStore.cs b/Decompiled/Assembly-CSharp/GeneralStore.cs
-index c4ef35a..9173904 100644
+index 6177f53..acdc5a7 100644
 --- a/Decompiled/Assembly-CSharp/GeneralStore.cs
 +++ b/Decompiled/Assembly-CSharp/GeneralStore.cs
 @@ -495,7 +495,7 @@ public class GeneralStore : Store
@@ -24698,7 +24699,7 @@ index c4ef35a..9173904 100644
  			AlertPopup.PopupInfo popupInfo = new AlertPopup.PopupInfo();
  			popupInfo.m_attentionCategory = UserAttentionBlocker.NONE;
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
-index cf437bb..c472fad 100644
+index 2fddea0..343fd96 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 @@ -92,6 +92,37 @@ namespace Hearthstone
@@ -24740,7 +24741,7 @@ index cf437bb..c472fad 100644
  		{
  			if (PlatformSettings.IsMobileRuntimeOS && (on ^ m_ANRMonitorOn))
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
-index acd6d24..13913e2 100644
+index de4d1f8..71bbf28 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 @@ -5,6 +5,7 @@ using System.IO;
@@ -24790,7 +24791,7 @@ index acd6d24..13913e2 100644
 -			ExceptionReporterControl.Get().ExceptionReportInitialize();
 +			// ExceptionReporterControl.Get().ExceptionReportInitialize(); // Remove so we don't send Blizzard exceptions that may be caused by us
 +			ExceptionReporterControl.Get().ExceptionReportInitializeDebug();
- 			HearthstonePerformance.Initialize(TestType, 2307301.ToString());
+ 			HearthstonePerformance.Initialize(TestType, 2379845.ToString());
  			HearthstonePerformance.Get()?.CaptureAppStartTime();
  			AppLaunchTracker.TrackAppLaunch();
 @@ -207,6 +213,8 @@ namespace Hearthstone
@@ -26689,10 +26690,10 @@ index 283f3b8..868693e 100644
  			return false;
  		}
 diff --git a/Decompiled/Assembly-CSharp/NetCache.cs b/Decompiled/Assembly-CSharp/NetCache.cs
-index 83bbbbd..20bc008 100644
+index fa080be..36bad73 100644
 --- a/Decompiled/Assembly-CSharp/NetCache.cs
 +++ b/Decompiled/Assembly-CSharp/NetCache.cs
-@@ -2109,24 +2109,50 @@ public class NetCache : IService, IHasUpdate
+@@ -2111,24 +2111,50 @@ public class NetCache : IService, IHasUpdate
  		return GetNetObject<T>() != null;
  	}
  
@@ -26958,7 +26959,7 @@ index bc5a647..08b407d 100644
  	};
  }
 diff --git a/Decompiled/Assembly-CSharp/OptionsMenu.cs b/Decompiled/Assembly-CSharp/OptionsMenu.cs
-index 2ba5628..d3d54a2 100644
+index 48ec5a5..d126dc5 100644
 --- a/Decompiled/Assembly-CSharp/OptionsMenu.cs
 +++ b/Decompiled/Assembly-CSharp/OptionsMenu.cs
 @@ -3,9 +3,10 @@ using System.Collections.Generic;
@@ -27688,7 +27689,7 @@ index 061d9ad..8ca1073 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/PopupDisplayManager.cs b/Decompiled/Assembly-CSharp/PopupDisplayManager.cs
-index fa53b17..551467b 100644
+index e64bae6..dd32afd 100644
 --- a/Decompiled/Assembly-CSharp/PopupDisplayManager.cs
 +++ b/Decompiled/Assembly-CSharp/PopupDisplayManager.cs
 @@ -12,6 +12,7 @@ using Hearthstone.Progression;
