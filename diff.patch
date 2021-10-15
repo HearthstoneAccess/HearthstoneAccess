@@ -1,5 +1,5 @@
 diff --git a/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs b/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
-index d83a4d3..da8af45 100644
+index d83a4d3..7f1bb62 100644
 --- a/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
 @@ -5,8 +5,9 @@ using Hearthstone.DataModels;
@@ -95,7 +95,7 @@ index d83a4d3..da8af45 100644
 +		var menuTitle = LocalizationUtils.Get(LocalizationKey.SCREEN_ADVENTURE_SCREEN_CHOOSE_ADVENTURER_TITLE);
 +		var accessibleHeroPickerButtons = new AccessibleHorizontalMenu<AccessibleHeroPickerButton>(this, menuTitle, PressBackButton);
 +
-+		var numSupportedBoHHeroes = 4; // Jaina, Rexxar, Garrosh, Uther
++		var numSupportedBoHHeroes = 5; // Jaina, Rexxar, Garrosh, Uther, Anduin
 +
 +		//foreach (var hb in m_heroButtons)
 +		for (var i = 0; i < numSupportedBoHHeroes; i++)
@@ -305,10 +305,10 @@ index 0000000..fbe9535
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibilityMgr.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibilityMgr.cs
 new file mode 100644
-index 0000000..c2882f3
+index 0000000..f148a64
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibilityMgr.cs
-@@ -0,0 +1,626 @@
+@@ -0,0 +1,628 @@
 +﻿using System;
 +using System.Collections;
 +using System.Collections.Generic;
@@ -440,7 +440,9 @@ index 0000000..c2882f3
 +
 +            try
 +            {
-+                var curUI = GetFocusedUI();
++				Log.Accessibility.Print($"HideUI({ui})");
++
++				var curUI = GetFocusedUI();
 +                var numRemovedUIs = s_curUIs.RemoveAll(obj => obj == ui);
 +
 +                if (numRemovedUIs > 0)
@@ -937,10 +939,10 @@ index 0000000..c2882f3
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibilityUtils.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibilityUtils.cs
 new file mode 100644
-index 0000000..ba5723f
+index 0000000..d5a630d
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibilityUtils.cs
-@@ -0,0 +1,451 @@
+@@ -0,0 +1,456 @@
 +﻿using Assets;
 +using Hearthstone.UI;
 +using System;
@@ -975,7 +977,7 @@ index 0000000..ba5723f
 +            }
 +            catch (Exception e)
 +            {
-+                AccessibilityUtils.LogFatalError(e);
++                LogFatalError(e);
 +            }
 +        }
 +
@@ -990,34 +992,34 @@ index 0000000..ba5723f
 +            {
 +                LogDebug($"CT Before: {text}");
 +                text = text.Trim();
-+                text = AccessibilityUtils.FixWeirdText(text);
++                text = FixWeirdText(text);
 +                LogDebug($"CT: {text}");
-+                text = AccessibilityUtils.HandleNewLines(text);
-+                text = AccessibilityUtils.HandleSequentialBolds(text);
++                text = HandleNewLines(text);
++                text = HandleSequentialBolds(text);
 +                LogDebug($"CT: {text}");
-+                text = AccessibilityUtils.RemoveHTMLTags(text);
++                text = RemoveHTMLTags(text);
 +                LogDebug($"CT: {text}");
-+                text = AccessibilityUtils.RemoveLooseFormattingTags(text);
++                text = RemoveLooseFormattingTags(text);
 +                LogDebug($"CT: {text}");
-+                text = AccessibilityUtils.RemoveReadOnlyCharacters(text);
++                text = RemoveReadOnlyCharacters(text);
 +                LogDebug($"CT: {text}");
-+                text = AccessibilityUtils.RemoveAttackHealthParenthesisText(text);
++                text = RemoveAttackHealthParenthesisText(text);
 +                LogDebug($"CT: {text}");
-+                text = AccessibilityUtils.FixForwardSlashes(text);
++                text = FixForwardSlashes(text);
 +                LogDebug($"CT: {text}");
-+                text = AccessibilityUtils.CapitalizeSentences(text);
++                text = CapitalizeSentences(text);
 +                LogDebug($"CT: {text}");
-+                text = AccessibilityUtils.RemoveUnderscores(text);
++                text = RemoveUnderscores(text);
 +                LogDebug($"CT: {text}");
-+                text = AccessibilityUtils.CollapsePeriods(text);
++                text = CollapsePeriods(text);
 +                LogDebug($"CT: {text}");
-+                text = AccessibilityUtils.NormalizeSpaces(text);
++                text = NormalizeSpaces(text);
 +                LogDebug($"CT: {text}");
 +                text = text.Trim();
 +                LogDebug($"CT: {text}");
-+                //text = AccessibilityUtils.ExpandPlusSigns(text); // Not sure due to localization
++                //text = ExpandPlusSigns(text); // Not sure due to localization
 +                LogDebug($"CT: {text}");
-+                //text = AccessibilityUtils.ConvertNumbersToWrittenNumbers(text); // Bad idea as it breaks localization
++                //text = ConvertNumbersToWrittenNumbers(text); // Bad idea as it breaks localization
 +                LogDebug($"CT: {text}");
 +
 +                if (text.Length == 0)
@@ -1025,7 +1027,7 @@ index 0000000..ba5723f
 +                    return text;
 +                }
 +
-+                text = AccessibilityUtils.AddPeriodIfNeeded(text);
++                text = AddPeriodIfNeeded(text);
 +
 +                LogDebug($"CT After: {text}");
 +
@@ -1033,10 +1035,15 @@ index 0000000..ba5723f
 +            }
 +            catch (Exception e)
 +            {
-+                AccessibilityUtils.LogFatalError(e);
++                LogFatalError(e);
 +                return "";
 +            }
 +        }
++
++		internal static bool CanSeeShop()
++		{
++            return !ShopUtils.IsVirtualCurrencyEnabled();
++		}
 +
 +		internal static bool CanPlayPvP()
 +		{
@@ -1139,9 +1146,9 @@ index 0000000..ba5723f
 +            var sentenceEndingCharacters = LocalizationUtils.GetSentenceEndingCharacters();
 +            var lastChar = text[text.Length - 1];
 +
-+            AccessibilityUtils.LogDebug($"AddPeriodIfNeeded({text}) ; lastChar={lastChar}");
++            LogDebug($"AddPeriodIfNeeded({text}) ; lastChar={lastChar}");
 +
-+            if (sentenceEndingCharacters.Contains(lastChar) || text.EndsWith(".\"")) // Edge case in a lot of languages
++            if (sentenceEndingCharacters.Contains(lastChar) || text.EndsWith(".\"") || text.EndsWith(":")) // Edge cases in a lot of languages
 +            {
 +                return text;
 +            }
@@ -1378,7 +1385,7 @@ index 0000000..ba5723f
 +
 +		internal static void OutputTimerIfNecessary(int curSeconds, int prevSeconds)
 +		{
-+			if (curSeconds < prevSeconds && (curSeconds == 15 || curSeconds == 5)) // 15 and 5 seem fine for now
++			if (curSeconds < prevSeconds && curSeconds == 10) // was 15 and 5 but some players complained
 +			{
 +				AccessibilityMgr.OutputNotification(LocalizationUtils.Format(LocalizationKey.GAMEPLAY_N_SECONDS_REMAINING, curSeconds));
 +			}
@@ -1755,10 +1762,10 @@ index 0000000..cdc2bbd
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleCard.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCard.cs
 new file mode 100644
-index 0000000..0df555b
+index 0000000..c49c889
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCard.cs
-@@ -0,0 +1,585 @@
+@@ -0,0 +1,607 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Text;
@@ -1901,7 +1908,7 @@ index 0000000..0df555b
 +            var lines = new List<string>();
 +            lines.Add(GetName());
 +            lines.Add(GetCost());
-+            lines.Add(GetType());
++            lines.Add(GetCardType());
 +
 +            var armor = m_card.GetEntity().GetArmor();
 +
@@ -1980,7 +1987,7 @@ index 0000000..0df555b
 +
 +            if (!isWielded)
 +            {
-+                lines.Add(GetType());
++                lines.Add(GetCardType());
 +            }
 +
 +            AccessibleCardUtils.AddLineIfExists(GetRarity(), lines);
@@ -2027,7 +2034,7 @@ index 0000000..0df555b
 +
 +            if (!isInPlayZone)
 +            {
-+                lines.Add(GetType());
++                lines.Add(GetCardType());
 +            }
 +
 +            AccessibleCardUtils.AddLineIfExists(GetRarity(), lines);
@@ -2201,10 +2208,16 @@ index 0000000..0df555b
 +        private string GetDescription()
 +        {
 +            Entity entity = m_card.GetEntity();
++
++            if (IsSilencedMinion(entity))
++            {
++                return LocalizedText.GLOBAL_SILENCE;
++            }
++
 +            return entity.GetCardTextBuilder().BuildCardTextInHand(entity);
 +        }
 +
-+        private string GetType()
++        private string GetCardType()
 +        {
 +            return AccessibleCardUtils.GetType(m_card.GetEntity().GetCardType());
 +        }
@@ -2320,6 +2333,7 @@ index 0000000..0df555b
 +
 +            var entity = m_card.GetEntity();
 +
++            if (IsSilencedMinion(entity)) effects.Add(LocalizedText.GLOBAL_SILENCE);
 +            if (entity.HasDivineShield()) effects.Add(LocalizedText.GLOBAL_DIVINE_SHIELD);
 +            if (entity.IsFrozen()) effects.Add(LocalizedText.GLOBAL_FROZEN);
 +            if (entity.HasLifesteal()) effects.Add(LocalizedText.GLOBAL_LIFESTEAL);
@@ -2338,7 +2352,22 @@ index 0000000..0df555b
 +            return AccessibleSpeechUtils.HumanizeList(effects);
 +        }
 +
-+        internal Card GetCard()
++		private bool IsSilencedMinion(Entity entity)
++		{
++            if (entity == null)
++			{
++                return false;
++			}
++
++            if (entity.GetCardType() != TAG_CARDTYPE.MINION || entity.GetZone() != TAG_ZONE.PLAY)
++			{
++                return false;
++			}
++
++            return entity.IsSilenced();
++		}
++
++		internal Card GetCard()
 +        {
 +            return m_card;
 +        }
@@ -2617,7 +2646,7 @@ index 0000000..926fe77
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleCollectibleCard.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCollectibleCard.cs
 new file mode 100644
-index 0000000..ea79bdc
+index 0000000..75f923d
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCollectibleCard.cs
 @@ -0,0 +1,209 @@
@@ -2706,7 +2735,7 @@ index 0000000..ea79bdc
 +			}
 +
 +            lines.Add(GetCost());
-+            lines.Add(GetType());
++            lines.Add(GetCardType());
 +
 +            var armor = m_card.GetEntityDef().GetArmor();
 +
@@ -2777,7 +2806,7 @@ index 0000000..ea79bdc
 +            return m_card.CardInHandText;
 +        }
 +
-+        private string GetType()
++        private string GetCardType()
 +        {
 +            return AccessibleCardUtils.GetType(m_card.CardType);
 +        }
@@ -5827,10 +5856,10 @@ index 0000000..ed5a085
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleHorizontalMenu.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleHorizontalMenu.cs
 new file mode 100644
-index 0000000..5f92ec0
+index 0000000..3865659
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleHorizontalMenu.cs
-@@ -0,0 +1,181 @@
+@@ -0,0 +1,192 @@
 +﻿using System;
 +using System.Collections.Generic;
 +
@@ -5897,6 +5926,14 @@ index 0000000..5f92ec0
 +                {
 +                    return ReadNextOption(-1);
 +                }
++                else if (AccessibleKey.READ_FIRST_ITEM.IsPressed())
++				{
++                    return ReadOption(0);
++				}
++                else if (AccessibleKey.READ_LAST_ITEM.IsPressed())
++				{
++                    return ReadOption(m_options.Count - 1);
++				}
 +                else if (AccessibleKey.CONFIRM.IsPressed())
 +                {
 +                    return SelectOption();
@@ -5920,14 +5957,17 @@ index 0000000..5f92ec0
 +
 +        private bool ReadNextOption(int inc)
 +        {
-+            int nextOptionIdx = m_curOptionIdx + inc;
++            return ReadOption(m_curOptionIdx + inc);
++        }
 +
-+            if (nextOptionIdx < 0 || nextOptionIdx >= m_options.Count)
++        private bool ReadOption(int optionIdx)
++        {
++            if (optionIdx < 0 || optionIdx >= m_options.Count)
 +            {
 +                return false;
 +            }
 +
-+            m_curOptionIdx = nextOptionIdx;
++            m_curOptionIdx = optionIdx;
 +            var curOption = m_options[m_curOptionIdx];
 +            curOption.m_option.Reset();
 +
@@ -6014,10 +6054,10 @@ index 0000000..5f92ec0
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleHub.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleHub.cs
 new file mode 100644
-index 0000000..6d23080
+index 0000000..15070c2
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleHub.cs
-@@ -0,0 +1,292 @@
+@@ -0,0 +1,333 @@
 +﻿using Hearthstone.Progression;
 +using PegasusShared;
 +using System;
@@ -6063,13 +6103,14 @@ index 0000000..6d23080
 +                m_mainMenu.AddOption(LocalizationUtils.Get(LocalizationKey.SCREEN_HEARTHSTONE_PLAY_CASUAL), PlayCasual);
 +			}
 +
-+            m_mainMenu.AddOption(LocalizedText.HUB_GAME_MODES_OPTION, OnClickModes);
-+            m_mainMenu.AddOption(LocalizedText.HUB_MY_COLLECTION_OPTION, OnMyCollection);
++            m_mainMenu.AddOption(AccessibleKey.HUB_MODES, LocalizedText.HUB_GAME_MODES_OPTION, OnClickModes);
++            m_mainMenu.AddOption(AccessibleKey.HUB_MY_COLLECTION, LocalizedText.HUB_MY_COLLECTION_OPTION, OnMyCollection);
 +            m_mainMenu.AddOption($"{LocalizationUtils.Get(LocalizationKey.GLOBAL_OPEN_PACKS)} {Box.Get().m_OpenPacksButton.m_count.Text}", OnClickOpenPacks);
++			m_mainMenu.AddOption(AccessibleKey.HUB_JOURNAL, LocalizationUtils.Get(LocalizationKey.GLOBAL_JOURNAL), OnClickJournal);
 +
-+            if (!AccessibleJournal.UNDER_DEVELOPMENT)
++            if (AccessibilityUtils.CanSeeShop())
 +			{
-+				m_mainMenu.AddOption(LocalizationUtils.Get(LocalizationKey.GLOBAL_JOURNAL), OnClickJournal);
++				m_mainMenu.AddOption(AccessibleKey.HUB_SHOP, LocalizationUtils.Get(LocalizationKey.GLOBAL_SHOP), OnClickShop);
 +			}
 +
 +			m_mainMenu.AddOption(LocalizedText.HUB_HELP_OPTION, OnClickHelp);
@@ -6133,6 +6174,11 @@ index 0000000..6d23080
 +            AccessibleWidgetUtils.TriggerButtonClicked(Box.Get().m_journalButtonWidget);
 +        }
 +
++        private void OnClickShop()
++        {
++            Box.Get().m_StoreButton.TriggerRelease();
++        }
++
 +        #region My Collection
 +
 +        private AccessibleMenu m_myCollectionChooseFormatMenu;
@@ -6152,6 +6198,7 @@ index 0000000..6d23080
 +		private void EnterMyCollection(FormatType format)
 +		{
 +            Options.SetFormatType(format);
++            CollectionManager.s_HeroPickerFormat = format;
 +            ClickMyCollection();
 +		}
 +
@@ -6161,8 +6208,7 @@ index 0000000..6d23080
 +
 +            m_myCollectionChooseFormatMenu.AddOption(GameStrings.Get("GLUE_COLLECTION_ALL_STANDARD_CARDS"), EnterMyCollectionStandard);
 +
-+            // This is broken in HS 21.4
-+            /*if (CollectionManager.Get().AccountCanSeeWild())
++            if (CollectionManager.Get().AccountCanSeeWild())
 +			{
 +                m_myCollectionChooseFormatMenu.AddOption(GameStrings.Get("GLUE_COLLECTION_WILD_CARDS"), EnterMyCollectionWild);
 +			}
@@ -6170,7 +6216,7 @@ index 0000000..6d23080
 +            if (CollectionManager.Get().AccountCanSeeClassic())
 +			{
 +                m_myCollectionChooseFormatMenu.AddOption(GameStrings.Get("GLUE_COLLECTION_VANILLA_CARDS"), EnterMyCollectionClassic);
-+			}*/
++			}
 +
 +            m_myCollectionChooseFormatMenu.StartReading();
 +            m_curState = State.MY_COLLECTION_MENU_CHOOSE_FORMAT;
@@ -6199,6 +6245,12 @@ index 0000000..6d23080
 +
 +        private void PlayCasual()
 +		{
++            if (!AccessibleRankedUtils.PlayerHasCasualDecks())
++			{
++                NotifyNeedToBuildDeckFirst();
++                return;
++			}
++
 +            Options.SetInRankedPlayMode(false);
 +            Options.SetFormatType(FormatType.FT_STANDARD);
 +            ClickPlay();
@@ -6206,14 +6258,33 @@ index 0000000..6d23080
 +
 +        private void OnPlayRanked()
 +		{
-+            if (!AccessibleRankedUtils.CanPlayRankedWild() && !AccessibleRankedUtils.CanPlayRankedClassic())
++            if (CollectionManager.Get().ShouldAccountSeeStandardWild())
++			{
++                ReadPlayRankedChooseFormatMenu();
++			}
++            else if (AccessibleRankedUtils.PlayerHasStandardDecks())
 +			{
 +                PlayRankedStandard();
 +			}
 +            else
 +			{
-+                ReadPlayRankedChooseFormatMenu();
++                NotifyNeedToBuildDeckFirst();
 +			}
++		}
++
++		private void NotifyNeedToBuildDeckFirst()
++		{
++            AccessibilityMgr.Output(this, GameStrings.Get("GLOBAL_FRIENDLIST_CHALLENGE_CHALLENGER_NO_DECK"));
++		}
++
++		private void NotifyNoStandardDeck()
++		{
++            AccessibilityMgr.Output(this, GameStrings.Get("GLOBAL_FRIENDLIST_CHALLENGE_CHALLENGER_NO_STANDARD_DECK"));
++		}
++
++		private void NotifyNoClassicDeck()
++		{
++            AccessibilityMgr.Output(this, GameStrings.Get("GLOBAL_FRIENDLIST_CHALLENGE_CHALLENGER_NO_CLASSIC_DECK"));
 +		}
 +
 +		private void EnterRankedMode(FormatType format)
@@ -6228,33 +6299,43 @@ index 0000000..6d23080
 +            m_playRankedChooseFormatMenu = new AccessibleMenu(this, "", RereadMainMenu);
 +
 +            m_playRankedChooseFormatMenu.AddOption(LocalizationUtils.Get(LocalizationKey.SCREEN_HEARTHSTONE_PLAY_STANDARD), PlayRankedStandard);
++			m_playRankedChooseFormatMenu.AddOption(LocalizationUtils.Get(LocalizationKey.SCREEN_HEARTHSTONE_PLAY_WILD), PlayRankedWild);
++			m_playRankedChooseFormatMenu.AddOption(LocalizationUtils.Get(LocalizationKey.SCREEN_HEARTHSTONE_PLAY_CLASSIC), PlayRankedClassic);
 +
-+            if (AccessibleRankedUtils.CanPlayRankedWild())
-+			{
-+                m_playRankedChooseFormatMenu.AddOption(LocalizationUtils.Get(LocalizationKey.SCREEN_HEARTHSTONE_PLAY_WILD), PlayRankedWild);
-+			}
-+
-+            if (AccessibleRankedUtils.CanPlayRankedClassic())
-+			{
-+                m_playRankedChooseFormatMenu.AddOption(LocalizationUtils.Get(LocalizationKey.SCREEN_HEARTHSTONE_PLAY_CLASSIC), PlayRankedClassic);
-+			}
-+
-+            m_playRankedChooseFormatMenu.StartReading();
-+            m_curState = State.PLAY_RANKED_MENU_CHOOSE_FORMAT;
++			m_playRankedChooseFormatMenu.StartReading();
++			m_curState = State.PLAY_RANKED_MENU_CHOOSE_FORMAT;
 +		}
 +
 +		private void PlayRankedStandard()
 +		{
++            if (!AccessibleRankedUtils.PlayerHasStandardDecks())
++			{
++                NotifyNoStandardDeck();
++                return;
++			}
++
 +            EnterRankedMode(FormatType.FT_STANDARD);
 +		}
 +
 +		private void PlayRankedWild()
 +		{
++            if (!AccessibleRankedUtils.PlayerCanPlayWild())
++			{
++                NotifyNeedToBuildDeckFirst();
++                return;
++			}
++
 +            EnterRankedMode(FormatType.FT_WILD);
 +		}
 +
 +		private void PlayRankedClassic()
 +		{
++            if (!AccessibleRankedUtils.PlayerCanPlayClassic())
++			{
++                NotifyNoClassicDeck();
++                return;
++			}
++
 +            EnterRankedMode(FormatType.FT_CLASSIC);
 +		}
 +
@@ -8591,7 +8672,7 @@ index 0000000..c2dc2f8
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleItem.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleItem.cs
 new file mode 100644
-index 0000000..1ea10f3
+index 0000000..7314e22
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleItem.cs
 @@ -0,0 +1,172 @@
@@ -8740,7 +8821,7 @@ index 0000000..1ea10f3
 +            ReadLineImpl();
 +        }
 +
-+        internal bool HandleAccessibleInput()
++        internal virtual bool HandleAccessibleInput()
 +        {
 +            if (AccessibleKey.READ_NEXT_LINE.IsPressed())
 +            {
@@ -8769,10 +8850,10 @@ index 0000000..1ea10f3
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleJournal.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleJournal.cs
 new file mode 100644
-index 0000000..1508126
+index 0000000..4d02b45
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleJournal.cs
-@@ -0,0 +1,285 @@
+@@ -0,0 +1,608 @@
 +﻿using Hearthstone.DataModels;
 +using Hearthstone.Progression;
 +using Hearthstone.UI;
@@ -8784,9 +8865,17 @@ index 0000000..1508126
 +{
 +    class AccessibleJournal : AccessibleUI
 +    {
-+        public static bool UNDER_DEVELOPMENT = true;
-+
-+        private enum State { LOADING, MAIN_MENU, QUESTS_MENU, READING_DAILY_QUESTS, READING_WEEKLY_QUESTS };
++        private enum State
++        {
++            LOADING,
++            MAIN_MENU,
++            QUESTS_MENU,
++            READING_DAILY_QUESTS,
++            READING_WEEKLY_QUESTS,
++            REWARDS_TRACK_MENU,
++            CLAIMING_REWARD,
++            CHOOSING_REWARD
++        };
 +
 +        private State m_curState = State.LOADING;
 +
@@ -8799,6 +8888,9 @@ index 0000000..1508126
 +        private AccessibleListOfItems<AccessibleQuest> m_dailyQuests;
 +        private AccessibleListOfItems<AccessibleQuest> m_weeklyQuests;
 +
++        // Rewards Track
++        private AccessibleMenu m_rewardsTrackMenu;
++
 +        private static AccessibleJournal s_instance = new AccessibleJournal();
 +
 +        internal static AccessibleJournal Get()
@@ -8808,11 +8900,6 @@ index 0000000..1508126
 +
 +        public void OnJournalOpened(Widget widget)
 +        {
-+            if (UNDER_DEVELOPMENT)
-+			{
-+                return;
-+			}
-+
 +            Reset();
 +
 +            m_JournalWidget = widget;
@@ -8833,18 +8920,11 @@ index 0000000..1508126
 +
 +        public void OnJournalClosed()
 +        {
-+            if (UNDER_DEVELOPMENT)
-+			{
-+                return;
-+			}
-+
 +            AccessibilityMgr.HideUI(this);
 +        }
 +
 +        private void ReadJournal()
 +        {
-+			//AccessibilityUtils.DebugWidget("JournalPopup.m_widget", m_JournalWidget);
-+
 +            var buttonManager = GetButtonManager();
 +            var questButton = AccessibleWidgetUtils.GetPegUIElement(buttonManager, "QuestButton/JournalButtonTab/Root");
 +            var rewardButton = AccessibleWidgetUtils.GetPegUIElement(buttonManager, "RewardButton/JournalButtonTab/Root");
@@ -8853,8 +8933,9 @@ index 0000000..1508126
 +
 +            m_mainMenu = new AccessibleMenu(this, LocalizationUtils.Get(LocalizationKey.GLOBAL_JOURNAL), CloseJournal);
 +            m_mainMenu.AddOption(GameStrings.Get("GLUE_PROGRESSION_QUESTS_TITLE"), () =>  AccessibleWidgetUtils.ClickButton(questButton));
-+            /*m_mainMenu.AddOption(GameStrings.Get("GLUE_PROGRESSION_REWARDS_TITLE"), () => AccessibleWidgetUtils.ClickButton(rewardButton));
-+            m_mainMenu.AddOption(GameStrings.Get("GLUE_PROGRESSION_ACHIEVEMENTS_TITLE"), () => AccessibleWidgetUtils.ClickButton(achievementButton));
++            m_mainMenu.AddOption(GameStrings.Get("GLUE_PROGRESSION_REWARDS_TITLE"), ReadRewardsTrack);
++            //m_mainMenu.AddOption(GameStrings.Get("GLUE_PROGRESSION_REWARDS_TITLE"), () => AccessibleWidgetUtils.ClickButton(rewardButton));
++            /*m_mainMenu.AddOption(GameStrings.Get("GLUE_PROGRESSION_ACHIEVEMENTS_TITLE"), () => AccessibleWidgetUtils.ClickButton(achievementButton));
 +            m_mainMenu.AddOption(GameStrings.Get("GLUE_PROGRESSION_PROFILE_TITLE"), () => AccessibleWidgetUtils.ClickButton(profileButton));*/
 +
 +            m_mainMenu.StartReading();
@@ -8862,13 +8943,8 @@ index 0000000..1508126
 +            m_curState = State.MAIN_MENU;
 +        }
 +
-+        internal void OnTabChanged(JournalMetaDataModel data)
++		internal void OnTabChanged(JournalMetaDataModel data)
 +        {
-+            if (UNDER_DEVELOPMENT)
-+			{
-+                return;
-+			}
-+
 +            AccessibilityUtils.LogDebug($"AccessibleJournal.OnTabChanged({data.TabIndex})");
 +
 +            if (data.TabIndex == 1)
@@ -8877,7 +8953,9 @@ index 0000000..1508126
 +            }
 +        }
 +
-+        private void ReadQuestLog()
++		#region Quests
++
++		private void ReadQuestLog()
 +        {
 +            var journalInnerTrayManager = GetJournalInnerTrayManager();
 +            var questLog = AccessibleUnityUtils.GetChildObject(journalInnerTrayManager, "Root/QuestLog/QuestLog");
@@ -8894,16 +8972,27 @@ index 0000000..1508126
 +            var dailyQuestTiles = GetQuestTiles(dailyQuestList);
 +            var weeklyQuestTiles = GetQuestTiles(weeklyQuestList);
 +
-+            m_dailyQuests = CreateQuestsList(dailyQuestTiles);
-+            m_weeklyQuests = CreateQuestsList(weeklyQuestTiles);
++            var dailyQuests = CreateQuestsFromQuestTiles(dailyQuestTiles);
++            var weeklyQuests = CreateQuestsFromQuestTiles(weeklyQuestTiles);
++
++            if (dailyQuests.Count == 0 && weeklyQuests.Count == 0)
++			{
++                AccessibilityMgr.Output(this, LocalizationUtils.Get(LocalizationKey.UI_QUEST_LOG_NO_QUESTS));
++                return;
++			}
 +
 +            if (!dailyTitle.activeInHierarchy)
 +            {
-+                ReadQuests(m_dailyQuests, State.READING_DAILY_QUESTS);
++                dailyQuests.AddRange(weeklyQuests);
++                m_dailyQuests = new AccessibleListOfItems<AccessibleQuest>(this, dailyQuests);
++				ReadQuests(m_dailyQuests, State.READING_DAILY_QUESTS);
 +            }
 +            else
 +            {
-+                m_questsMenu = new AccessibleMenu(this, "", ReadJournal);
++                m_dailyQuests = new AccessibleListOfItems<AccessibleQuest>(this, dailyQuests);
++                m_weeklyQuests = new AccessibleListOfItems<AccessibleQuest>(this, weeklyQuests);
++
++				m_questsMenu = new AccessibleMenu(this, "", ReadJournal);
 +                m_questsMenu.AddOption(GetQuestPoolName(dailyTitle), () => ReadQuests(m_dailyQuests, State.READING_DAILY_QUESTS));
 +                m_questsMenu.AddOption(GetQuestPoolName(weeklyTitle), () => ReadQuests(m_weeklyQuests, State.READING_WEEKLY_QUESTS));
 +
@@ -8912,22 +9001,27 @@ index 0000000..1508126
 +            }
 +        }
 +
-+        private void ReadQuests(AccessibleListOfItems<AccessibleQuest> quests, State state)
-+        {
-+            quests.StartReading();
-+            m_curState = state;
-+        }
++		internal void OnQuestRerolled(Hearthstone.Progression.QuestTile questTile)
++		{
++            RereadQuestsAfterInteract();
++		}
 +
-+        private AccessibleListOfItems<AccessibleQuest> CreateQuestsList(List<Hearthstone.Progression.QuestTile> questTiles)
-+        {
-+			var accessibleQuests = new List<AccessibleQuest>();
++		private List<AccessibleQuest> CreateQuestsFromQuestTiles(List<Hearthstone.Progression.QuestTile> questTiles)
++		{
++			var ret = new List<AccessibleQuest>();
 +
 +            foreach(var questTile in questTiles)
 +            {
-+                accessibleQuests.Add(new AccessibleQuest(this, questTile.GetQuestDataModel()));
++				ret.Add(new AccessibleQuest(this, questTile.GetQuestDataModel(), questTile));
 +            }
 +
-+            return new AccessibleListOfItems<AccessibleQuest>(this, accessibleQuests);
++            return ret;
++		}
++
++		private void ReadQuests(AccessibleListOfItems<AccessibleQuest> quests, State state)
++        {
++            quests.StartReading();
++            m_curState = state;
 +        }
 +
 +        private string GetQuestPoolName(GameObject titleGO)
@@ -8973,7 +9067,77 @@ index 0000000..1508126
 +            return ret;
 +        }
 +
-+        private GameObject GetJournalInnerTrayManager()
++		private void ReadQuestsOrJournal()
++        {
++            if (m_questsMenu != null)
++            {
++                m_questsMenu.StartReading();
++                m_curState = State.QUESTS_MENU;
++            }
++            else
++            {
++                ReadJournal();
++            }
++        }
++
++		internal void OnQuestAbandoned(Hearthstone.Progression.QuestTile questTile)
++		{
++            AccessibilityMgr.ShowUI(this); // Make it so we can output while the alert popup disappears
++            if (RefreshMenuAfterAbandonIfNeeded(m_dailyQuests, questTile) && m_dailyQuests.Count == 0)
++            {
++                ReadJournal();
++                return;
++            }
++            else if (RefreshMenuAfterAbandonIfNeeded(m_weeklyQuests, questTile) && m_weeklyQuests.Count == 0)
++			{
++                ReadJournal();
++                return;
++			}
++
++            RereadQuestsAfterInteract();
++		}
++
++		private bool RefreshMenuAfterAbandonIfNeeded(AccessibleListOfItems<AccessibleQuest> quests, Hearthstone.Progression.QuestTile abandonedQuest)
++		{
++            if (quests == null)
++			{
++                return false;
++			}
++
++            var questsBeforeAbandon = quests.Items;
++
++            var accessibleAbandonedQuest = questsBeforeAbandon.Find(q => q.GetQuestTile() == abandonedQuest);
++
++            if (accessibleAbandonedQuest != null)
++			{
++                quests.RemoveItem(accessibleAbandonedQuest);
++                return true;
++			}
++
++            return false;
++		}
++
++		internal void OnQuestAbandonCancel()
++		{
++            AccessibilityMgr.ShowUI(this); // Make it so we can output while the alert popup disappears
++            RereadQuestsAfterInteract();
++		}
++
++		private void RereadQuestsAfterInteract()
++		{
++            if (m_curState == State.READING_DAILY_QUESTS)
++			{
++                m_dailyQuests.StartReading();
++			}
++            else if (m_curState == State.READING_WEEKLY_QUESTS)
++			{
++                m_weeklyQuests.StartReading();
++			}
++		}
++
++		#endregion
++
++		private GameObject GetJournalInnerTrayManager()
 +        {
 +            return m_JournalWidget.transform.Find("Root/JournalInnerTrayManager/JournalInnerTrayManager").gameObject;
 +        }
@@ -8990,44 +9154,43 @@ index 0000000..1508126
 +
 +        public void HandleAccessibleInput()
 +        {
-+			if (AccessibleKey.BACK.IsPressed())
-+            {
-+                // Everything else are menus so they handle their own BACKs
-+                if (m_curState == State.READING_DAILY_QUESTS || m_curState == State.READING_WEEKLY_QUESTS)
-+                {
-+                    ReadQuestsOrJournal();
-+                    return;
-+                }
-+            }
++			if ((m_curState == State.READING_DAILY_QUESTS || m_curState == State.READING_WEEKLY_QUESTS) && AccessibleKey.BACK.IsPressed())
++			{
++				// Everything else are menus so they handle their own BACKs
++				{
++					ReadQuestsOrJournal();
++					return;
++				}
++			}
 +
-+            if (m_curState == State.MAIN_MENU)
++			if (m_curState == State.MAIN_MENU)
 +            {
 +                m_mainMenu?.HandleAccessibleInput();
 +            }
 +            else if (m_curState == State.READING_DAILY_QUESTS)
 +            {
-+                m_dailyQuests?.HandleAccessibleInput();
-+            }
-+            else if (m_curState == State.READING_WEEKLY_QUESTS)
++				m_dailyQuests?.HandleAccessibleInput();
++			}
++			else if (m_curState == State.READING_WEEKLY_QUESTS)
 +            {
-+                m_weeklyQuests?.HandleAccessibleInput();
-+            }
-+            else if (m_curState == State.QUESTS_MENU)
++				m_weeklyQuests?.HandleAccessibleInput();
++			}
++			else if (m_curState == State.QUESTS_MENU)
 +            {
 +                m_questsMenu?.HandleAccessibleInput();
 +            }
-+        }
-+
-+        private void ReadQuestsOrJournal()
-+        {
-+            if (m_questsMenu != null)
++            else if (m_curState == State.REWARDS_TRACK_MENU)
 +            {
-+                m_questsMenu.StartReading();
-+                m_curState = State.QUESTS_MENU;
++                m_rewardsTrackMenu?.HandleAccessibleInput();
 +            }
-+            else
++            else if (m_curState == State.CHOOSING_REWARD)
 +            {
-+                ReadJournal();
++                if (AccessibleKey.CONFIRM.IsPressed())
++				{
++                    ClaimChooseOneReward(m_chooseOneRewards.GetItemBeingRead());
++                    return;
++				}
++                m_chooseOneRewards?.HandleAccessibleInput();
 +            }
 +        }
 +
@@ -9053,17 +9216,258 @@ index 0000000..1508126
 +            {
 +                return m_questsMenu?.GetHelp();
 +            }
++            else if (m_curState == State.REWARDS_TRACK_MENU)
++            {
++                return m_rewardsTrackMenu?.GetHelp();
++            }
++            else if (m_curState == State.CHOOSING_REWARD)
++            {
++                return m_chooseOneRewards.GetHelp(false);
++            }
 +
 +            return "";
 +        }
-+    }
++
++        #region Rewards Track
++		private void ReadRewardsTrack()
++        {
++            var numRewards = GetUnclaimedRewardsCount();
++
++			m_rewardsTrackMenu = new AccessibleMenu(this, "", ReadJournal);
++
++            m_rewardsTrackMenu.AddOption(LocalizationUtils.Format(LocalizationKey.UI_REWARDS_TRACK_CLAIM_REWARDS, numRewards), ClaimRewardsTrackRewards);
++			m_rewardsTrackMenu.AddOption(LocalizationUtils.Get(LocalizationKey.UI_REWARDS_TRACK_READ_LEVEL), ReadRewardsTrackLevel);
++
++			m_rewardsTrackMenu.StartReading();
++			m_curState = State.REWARDS_TRACK_MENU;
++		}
++
++        private int GetCurrentTrackLevel()
++		{
++            if (AccessibleRewardsTrackTestingUtils.IsMockingRewardsTrack())
++			{
++                return AccessibleRewardsTrackTestingUtils.GetCurrentTrackLevel();
++			}
++
++			return RewardTrackManager.Get().TrackDataModel.Level;
++		}
++
++        private int GetCurrentTrackId()
++		{
++            if (AccessibleRewardsTrackTestingUtils.IsMockingRewardsTrack())
++			{
++                return AccessibleRewardsTrackTestingUtils.GetCurrentTrackId();
++			}
++
++			return RewardTrackManager.Get().TrackDataModel.RewardTrackId;
++		}
++
++        private List<RewardTrackLevelDbfRecord> GetUnclaimedRewards()
++		{
++            var ret = new List<RewardTrackLevelDbfRecord>();
++
++            int trackLevel = GetCurrentTrackLevel();
++            int trackId = GetCurrentTrackId();
++			int levelCap = RewardTrackManager.Get().RewardTrackAsset.LevelCapSoft;
++
++			foreach (var record in RewardTrackManager.Get().RewardTrackAsset.Levels)
++			{
++				if (trackId == record.RewardTrackId && record.Level <= trackLevel && record.Level <= levelCap && RewardTrackManager.Get().HasUnclaimedRewardsForLevel(record))
++				{
++                    ret.Add(record);
++				}
++			}
++
++            ret.Sort((a, b) => a.Level - b.Level);
++
++            return ret;
++		}
++
++		private void ClaimRewardsTrackRewards()
++		{
++            var unclaimedRewards = GetUnclaimedRewards();
++
++            if (unclaimedRewards.Count == 0)
++			{
++                AccessibilityMgr.Output(this, LocalizationUtils.Get(LocalizationKey.UI_REWARDS_TRACK_CLAIM_REWARDS_NO_REWARDS));
++			}
++            else
++			{
++                ClaimNextTrackReward();
++			}
++		}
++
++		private void ClaimNextTrackReward()
++		{
++            var unclaimedRewards = GetUnclaimedRewards();
++
++            if (unclaimedRewards.Count == 0)
++			{
++                return;
++			}
++            else
++			{
++                var nextReward = unclaimedRewards[0];
++                var nextRewardLevel = nextReward.Level;
++                var rewardState = RewardTrackManager.Get().GetPlayerRewardTrackLevelState(nextRewardLevel);
++                var forPaidTrack = true;
++
++                if (rewardState.HasFreeRewardStatus && !ProgressUtils.HasClaimedRewardTrackReward((RewardTrackManager.RewardStatus)rewardState.FreeRewardStatus))
++				{
++                    forPaidTrack = false;
++				}
++
++                if (IsChooseOneReward(nextReward, forPaidTrack))
++				{
++					ReadChooseOneRewards(nextReward, forPaidTrack);
++				}
++                else
++				{
++					m_curState = State.CLAIMING_REWARD;
++					RewardTrackManager.Get().ClaimRewardTrackReward(nextReward.RewardTrackId, nextReward.Level, forPaidTrack);
++				}
++			}
++		}
++
++        private AccessibleListOfItems<AccessibleRewardItemDataModel> m_chooseOneRewards;
++
++		private void ReadChooseOneRewards(RewardTrackLevelDbfRecord record, bool forPaidTrack)
++		{
++            var dbfRecord = (forPaidTrack ? record.PaidRewardListRecord : record.FreeRewardListRecord);
++
++            if (dbfRecord == null)
++			{
++                AccessibilityUtils.LogFatalError($"ReadChooseOneRewards() reached null dbfRecord: record.RewardTrackId={record.RewardTrackId} record.ID={record.ID} forPaidTrack={forPaidTrack}");
++                return;
++			}
++
++            if (!dbfRecord.ChooseOne)
++			{
++                AccessibilityUtils.LogFatalError($"ReadChooseOneRewards() reached a non-choose one dbfRecord: record.RewardTrackId={record.RewardTrackId} record.ID={record.ID} forPaidTrack={forPaidTrack}");
++                return;
++			}
++
++            var choices = dbfRecord.RewardItems;
++            var isHeroSkinChoice = true;
++            foreach (var choice in choices)
++			{
++                if (choice.RewardType != Assets.RewardItem.RewardType.HERO_SKIN)
++				{
++                    isHeroSkinChoice = false;
++				}
++			}
++
++            var menuTitle = isHeroSkinChoice ? GameStrings.Get("GLUE_PROGRESSION_REWARD_TRACK_POPUP_SKIN_CHOICE_TITLE") : GameStrings.Get("GAMEPLAY_CHOOSE_ONE");
++            AccessibilityMgr.Output(this, menuTitle, true);
++
++			var accessibleRewards = new List<AccessibleRewardItemDataModel>();
++			
++			foreach (var choice in choices)
++            {
++                // Note: subsets may return more than 1 but this seems very unlikely to ever happen since choose one is just hero skins
++                var rewardsItems = RewardFactory.CreateRewardItemDataModel(choice);
++				accessibleRewards.Add(new AccessibleRewardItemDataModel(this, rewardsItems[0], !isHeroSkinChoice));
++            }
++
++			m_chooseOneRewards = new AccessibleListOfItems<AccessibleRewardItemDataModel>(this, accessibleRewards);
++            m_chooseOneRewards.StartReading();
++            m_curState = State.CHOOSING_REWARD;
++		}
++
++		private void ClaimChooseOneReward(AccessibleRewardItemDataModel chosen)
++		{
++            var unclaimedRewards = GetUnclaimedRewards();
++
++            if (unclaimedRewards.Count == 0)
++			{
++                AccessibilityUtils.LogFatalError("ClaimChooseOneReward reached invalid state: unclaimedRewards was empty");
++                return;
++			}
++            else
++			{
++                var nextReward = unclaimedRewards[0];
++                var nextRewardLevel = nextReward.Level;
++                var rewardState = RewardTrackManager.Get().GetPlayerRewardTrackLevelState(nextRewardLevel);
++                var forPaidTrack = true;
++
++                if (rewardState.HasFreeRewardStatus && !ProgressUtils.HasClaimedRewardTrackReward((RewardTrackManager.RewardStatus)rewardState.FreeRewardStatus))
++				{
++                    forPaidTrack = false;
++				}
++
++                if (IsChooseOneReward(nextReward, forPaidTrack))
++				{
++					m_curState = State.CLAIMING_REWARD;
++					RewardTrackManager.Get().ClaimRewardTrackReward(nextReward.RewardTrackId, nextReward.Level, forPaidTrack, chosen.GetDataModel().AssetId);
++				}
++                else
++				{
++					AccessibilityUtils.LogFatalError($"ClaimChooseOneReward reached invalid state: reward was not choose one. trackId={nextReward.RewardTrackId} trackLevel={nextReward.Level} forPaidTrack={forPaidTrack}");
++					return;
++				}
++			}
++		}
++
++		private bool IsChooseOneReward(RewardTrackLevelDbfRecord record, bool forPaidTrack)
++		{
++            var dbfRecord = (forPaidTrack ? record.PaidRewardListRecord : record.FreeRewardListRecord);
++
++            if (dbfRecord == null)
++			{
++                return false;
++			}
++
++			return dbfRecord.ChooseOne;
++		}
++
++		private int GetUnclaimedRewardsCount()
++		{
++            var ret = 0;
++
++            var unclaimedRewards = GetUnclaimedRewards();
++
++            foreach (var unclaimedReward in unclaimedRewards)
++			{
++                var freeRecord = unclaimedReward.FreeRewardListRecord;
++                var paidRecord = unclaimedReward.PaidRewardListRecord;
++                var playerRewardTrackLevelState = RewardTrackManager.Get().GetPlayerRewardTrackLevelState(unclaimedReward.Level);
++                var premiumRewardsUnlocked = RewardTrackManager.Get().ArePremiumRewardsUnlocked();
++
++                if (freeRecord != null && freeRecord.RewardItems?.Count > 0 && !ProgressUtils.HasClaimedRewardTrackReward((RewardTrackManager.RewardStatus)playerRewardTrackLevelState.FreeRewardStatus))
++				{
++                    ret++;
++				}
++
++                if (premiumRewardsUnlocked && paidRecord != null && paidRecord.RewardItems?.Count > 0 && !ProgressUtils.HasClaimedRewardTrackReward((RewardTrackManager.RewardStatus)playerRewardTrackLevelState.PaidRewardStatus))
++				{
++                    ret++;
++				}
++			}
++
++            return ret;
++		}
++
++		internal void OnTrackRewardAckd(int rewardTrackId, int level, bool forPaidTrack)
++		{
++            if (m_curState == State.CLAIMING_REWARD)
++			{
++                ReadRewardsTrack();
++			}
++		}
++
++		private void ReadRewardsTrackLevel()
++		{
++            AccessibilityMgr.Output(this, $"{GetCurrentTrackLevel()}");
++		}
++		#endregion
++	}
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleKey.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleKey.cs
 new file mode 100644
-index 0000000..0b10ff5
+index 0000000..e7c3983
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleKey.cs
-@@ -0,0 +1,304 @@
+@@ -0,0 +1,321 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using UnityEngine;
@@ -9090,6 +9494,8 @@ index 0000000..0b10ff5
 +        public static AccessibleKey READ_PREV_VALID_ITEM = CreateKey(KeyCode.Tab, true);
 +        public static AccessibleKey READ_FIRST_ITEM = CreateKey(KeyCode.Home);
 +        public static AccessibleKey READ_LAST_ITEM = CreateKey(KeyCode.End);
++        public static AccessibleKey READ_FIRST_ITEM_GLOBAL = CreateKey(KeyCode.Home, true);
++        public static AccessibleKey READ_LAST_ITEM_GLOBAL = CreateKey(KeyCode.End, true);
 +        public static AccessibleKey READ_NEXT_PAGE = CreateKey(KeyCode.PageDown);
 +        public static AccessibleKey READ_PREV_PAGE = CreateKey(KeyCode.PageUp);
 +        public static AccessibleKey SKIP_NOTIFICATION = CreateKey(KeyCode.Space);
@@ -9105,17 +9511,22 @@ index 0000000..0b10ff5
 +        #region Menu Controls
 +        public static AccessibleKey READ_NEXT_MENU_OPTION = CreateKey(KeyCode.DownArrow);
 +        public static AccessibleKey READ_PREV_MENU_OPTION = CreateKey(KeyCode.UpArrow);
++        public static AccessibleKey READ_CUR_MENU_OPTION = CreateKey(KeyCode.UpArrow, true);
 +        public static AccessibleKey READ_NEXT_VALID_MENU_OPTION = CreateKey(KeyCode.Tab);
 +        public static AccessibleKey READ_PREV_VALID_MENU_OPTION = CreateKey(KeyCode.Tab, true);
 +        public static AccessibleKey READ_NEXT_GLOBAL_MENU_OPTION = CreateGlobalKey(KeyCode.DownArrow);
 +        public static AccessibleKey READ_PREV_GLOBAL_MENU_OPTION = CreateGlobalKey(KeyCode.UpArrow);
++        public static AccessibleKey READ_CUR_GLOBAL_MENU_OPTION = CreateGlobalKey(KeyCode.UpArrow, true);
 +        public static AccessibleKey READ_NEXT_GLOBAL_VALID_MENU_OPTION = CreateGlobalKey(KeyCode.Tab);
 +        public static AccessibleKey READ_PREV_GLOBAL_VALID_MENU_OPTION = CreateGlobalKey(KeyCode.Tab, true);
 +        #endregion
 +
 +        #region Hub
-+        public static AccessibleKey PLAY_SOLO_ADVENTURES = CreateKey(KeyCode.S);
-+        public static AccessibleKey MY_COLLECTION = CreateKey(KeyCode.C);
++        // TODO: Play Ranked, Play Casual
++        public static AccessibleKey HUB_SHOP = CreateKey(KeyCode.S);
++        public static AccessibleKey HUB_MY_COLLECTION = CreateKey(KeyCode.C);
++        public static AccessibleKey HUB_JOURNAL = CreateKey(KeyCode.J);
++        public static AccessibleKey HUB_MODES = CreateKey(KeyCode.M);
 +        #endregion
 +
 +        #region My Collection
@@ -9123,6 +9534,11 @@ index 0000000..0b10ff5
 +        public static AccessibleKey CREATE_DECK = CreateKey(KeyCode.N);
 +        public static AccessibleKey DELETE_DECK = CreateKey(KeyCode.Delete);
 +        public static AccessibleKey EDIT_DECK = CreateKey(KeyCode.E);
++        #endregion
++
++        #region Quest Log
++        public static AccessibleKey REROLL_QUEST = CreateKey(KeyCode.R);
++        public static AccessibleKey ABANDON_QUEST = CreateKey(KeyCode.A);
 +        #endregion
 +
 +        #region Game Keys
@@ -9150,6 +9566,11 @@ index 0000000..0b10ff5
 +        public static AccessibleKey READ_TOOLTIP = CreateKey(KeyCode.I);
 +        public static AccessibleKey READ_ORIGINAL_CARD_STATS = CreateKey(KeyCode.K);
 +        public static AccessibleKey TRADE_CARD = CreateKey(KeyCode.T);
++        #endregion
++
++        #region Dev Utils
++        public static AccessibleKey DEV_1 = CreateKey(KeyCode.Alpha1);
++        public static AccessibleKey DEV_2 = CreateKey(KeyCode.Alpha2);
 +        #endregion
 +
 +        private bool m_requiresModifier;
@@ -9370,10 +9791,10 @@ index 0000000..0b10ff5
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleListOfItems.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleListOfItems.cs
 new file mode 100644
-index 0000000..7bb2e1e
+index 0000000..0ad5e0f
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleListOfItems.cs
-@@ -0,0 +1,162 @@
+@@ -0,0 +1,177 @@
 +﻿using System;
 +using System.Collections.Generic;
 +
@@ -9534,7 +9955,22 @@ index 0000000..7bb2e1e
 +                m_curItemIdx = items.Count - 1;
 +            }
 +        }
-+    }
++
++		internal void RemoveItem(T item)
++		{
++			var newItems = new List<T>();
++
++			foreach (var i in m_items)
++			{
++				if (i != item)
++				{
++					newItems.Add(i);
++				}
++			}
++
++			UpdateItems(newItems);
++		}
++	}
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleLoginScreen.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleLoginScreen.cs
 new file mode 100644
@@ -9587,10 +10023,10 @@ index 0000000..fd348ca
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleMenu.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleMenu.cs
 new file mode 100644
-index 0000000..546685d
+index 0000000..83b9487
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleMenu.cs
-@@ -0,0 +1,232 @@
+@@ -0,0 +1,328 @@
 +﻿using System;
 +using System.Collections.Generic;
 +
@@ -9632,6 +10068,8 @@ index 0000000..546685d
 +
 +        private bool m_canConfirmWithSpace; // Only for local menus (e.g. emotes)
 +
++        private Dictionary<AccessibleKey, MenuOption> m_hotkeys;
++
 +        public AccessibleMenu(AccessibleComponent parent, string menuName, Action goBackAction, bool globalMenu=false, bool canConfirmWithSpace=false) : base(parent)
 +        {
 +            m_menuName = menuName;
@@ -9639,6 +10077,21 @@ index 0000000..546685d
 +            m_goBackAction = goBackAction;
 +            m_isGlobalMenu = globalMenu;
 +            m_canConfirmWithSpace = canConfirmWithSpace;
++            m_hotkeys = new Dictionary<AccessibleKey, MenuOption>();
++        }
++
++        public void AddOption(AccessibleKey hotkey, string option, Action onClickAction)
++        {
++            var newOption = new MenuOption(option, onClickAction);
++            m_options.Add(newOption);
++            m_hotkeys.Add(hotkey, newOption);
++        }
++
++        public void AddOption(AccessibleKey hotkey, string option, Action onClickAction, Action onReadAction)
++        {
++            var newOption = new MenuOption(option, onClickAction, onReadAction);
++            m_options.Add(newOption);
++            m_hotkeys.Add(hotkey, newOption);
 +        }
 +
 +        public void AddOption(string option, Action onClickAction)
@@ -9663,6 +10116,18 @@ index 0000000..546685d
 +                {
 +                    return ReadNextOption(-1);
 +                }
++                else if (ReadCurIsPressed())
++				{
++                    return ReadNextOption(0);
++				}
++                else if (ReadFirstIsPressed())
++				{
++                    return ReadFirstOption();
++				}
++                else if (ReadLastIsPressed())
++				{
++                    return ReadLastOption();
++				}
 +                else if (ConfirmIsPressed())
 +                {
 +                    return SelectOption();
@@ -9671,6 +10136,10 @@ index 0000000..546685d
 +                {
 +                    return GoBack();
 +                }
++                else
++				{
++                    return HandleHotkeys();
++				}
 +            }
 +            catch (Exception e)
 +            {
@@ -9680,7 +10149,21 @@ index 0000000..546685d
 +            return false;
 +        }
 +
-+        private bool BackIsPressed()
++		private bool HandleHotkeys()
++		{
++			foreach (var hotkey in m_hotkeys)
++			{
++                if (hotkey.Key.IsPressed())
++				{
++                    hotkey.Value.m_onClickAction();
++                    return true;
++				}
++			}
++
++            return false;
++		}
++
++		private bool BackIsPressed()
 +        {
 +            if (m_isGlobalMenu)
 +            {
@@ -9721,6 +10204,42 @@ index 0000000..546685d
 +            }
 +        }
 +
++        private bool ReadCurIsPressed()
++        {
++            if (m_isGlobalMenu)
++            {
++                return AccessibleKey.READ_CUR_GLOBAL_MENU_OPTION.IsPressed();
++            }
++            else
++            {
++                return AccessibleKey.READ_CUR_MENU_OPTION.IsPressed();
++            }
++        }
++
++        private bool ReadFirstIsPressed()
++        {
++            if (m_isGlobalMenu)
++            {
++                return AccessibleKey.READ_FIRST_ITEM_GLOBAL.IsPressed();
++            }
++            else
++            {
++                return AccessibleKey.READ_FIRST_ITEM.IsPressed();
++            }
++        }
++
++        private bool ReadLastIsPressed()
++        {
++            if (m_isGlobalMenu)
++            {
++                return AccessibleKey.READ_LAST_ITEM_GLOBAL.IsPressed();
++            }
++            else
++            {
++                return AccessibleKey.READ_LAST_ITEM.IsPressed();
++            }
++        }
++
 +        private bool ReadNextIsPressed()
 +        {
 +            if (m_isGlobalMenu)
@@ -9733,16 +10252,29 @@ index 0000000..546685d
 +            }
 +        }
 +
++        private bool ReadFirstOption()
++        {
++            return ReadOption(0);
++        }
++
++        private bool ReadLastOption()
++        {
++            return ReadOption(m_options.Count - 1);
++        }
++
 +        private bool ReadNextOption(int inc)
 +        {
-+            int nextOptionIdx = m_curOptionIdx + inc;
++            return ReadOption(m_curOptionIdx + inc);
++        }
 +
-+            if (nextOptionIdx < 0 || nextOptionIdx >= m_options.Count)
++        private bool ReadOption(int optionIdx)
++		{
++            if (optionIdx < 0 || optionIdx >= m_options.Count)
 +            {
 +                return false;
 +            }
 +
-+            m_curOptionIdx = nextOptionIdx;
++            m_curOptionIdx = optionIdx;
 +            var curOption = m_options[m_curOptionIdx];
 +
 +            var speech = AccessibleSpeech.MENU_OPTION(curOption.m_text, m_curOptionIdx + 1, m_options.Count);
@@ -9754,7 +10286,7 @@ index 0000000..546685d
 +            }
 +
 +            return true;
-+        }
++		}
 +
 +        private bool SelectOption()
 +        {
@@ -9768,7 +10300,7 @@ index 0000000..546685d
 +            return true;
 +        }
 +
-+        private bool GoBack()
++        public bool GoBack()
 +        {
 +            if (m_goBackAction == null)
 +            {
@@ -9825,10 +10357,10 @@ index 0000000..546685d
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleMultilineText.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleMultilineText.cs
 new file mode 100644
-index 0000000..96df6e9
+index 0000000..061b95d
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleMultilineText.cs
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,31 @@
 +﻿using System;
 +using System.Collections.Generic;
 +
@@ -9846,6 +10378,12 @@ index 0000000..96df6e9
 +        internal AccessibleMultilineText(AccessibleComponent parent, List<string> lines, int startReadingFromLine) : base(parent, startReadingFromLine)
 +        {
 +            m_lines = lines;
++        }
++
++        internal AccessibleMultilineText(AccessibleComponent parent, params string[] lines) : base(parent)
++        {
++            m_lines = new List<string>();
++            m_lines.AddRange(lines);
 +        }
 +
 +        internal override List<string> GetLines()
@@ -10951,10 +11489,10 @@ index 0000000..1112ecd
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleQuest.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleQuest.cs
 new file mode 100644
-index 0000000..328a27f
+index 0000000..133667b
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleQuest.cs
-@@ -0,0 +1,90 @@
+@@ -0,0 +1,188 @@
 +﻿using System.Collections.Generic;
 +using Hearthstone.DataModels;
 +
@@ -10962,20 +11500,42 @@ index 0000000..328a27f
 +{
 +    class AccessibleQuest : AccessibleItem
 +    {
-+        private readonly QuestDataModel m_quest;
++        private readonly QuestDataModel m_questDataModel;
 +
-+        internal AccessibleQuest(AccessibleComponent parent, QuestDataModel quest) : base(parent)
++        private readonly Hearthstone.Progression.QuestTile m_questTile;
++
++        internal AccessibleQuest(AccessibleComponent parent, QuestDataModel questDataModel, Hearthstone.Progression.QuestTile questTile=null) : base(parent)
 +        {
-+            m_quest = quest;
++            m_questDataModel = questDataModel;
++            m_questTile = questTile;
 +        }
 +
 +        internal override List<string> GetLines()
 +        {
++            if (m_questDataModel.DisplayMode == Hearthstone.Progression.QuestManager.QuestTileDisplayMode.NEXT_QUEST_TIME)
++			{
++                return GetLinesForNextQuestTime();
++			}
++            else
++			{
++                return GetLinesForNormalQuestTile();
++			}
++        }
++
++		private List<string> GetLinesForNextQuestTime()
++		{
++            var ret = new List<string>();
++            ret.Add(m_questDataModel.TimeUntilNextQuest);
++			return ret;
++		}
++
++		private List<string> GetLinesForNormalQuestTile()
++		{
 +            var ret = new List<string>();
 +
-+            if (m_quest.Name?.Length > 0) // New quests don't have a name. Instead, they have the XP scroll at the top so we use GetRewards as the name
++            if (m_questDataModel.Name?.Length > 0) // New quests don't have a name. Instead, they have the XP scroll at the top so we use GetRewards as the name
 +            {
-+                ret.Add(m_quest.Name);
++                ret.Add(m_questDataModel.Name);
 +            }
 +
 +            var rewards = GetRewards();
@@ -10985,7 +11545,7 @@ index 0000000..328a27f
 +                ret.Add(rewards);
 +            }
 +
-+            ret.Add(m_quest.Description);
++            ret.Add(m_questDataModel.Description);
 +
 +            var progress = GetProgress();
 +
@@ -10994,19 +11554,47 @@ index 0000000..328a27f
 +                ret.Add(progress);
 +            }
 +
-+            // TODO: Reroll
++            if (CanAbandonQuest())
++			{
++                ret.Add(LocalizationUtils.Format(LocalizationKey.UI_QUEST_LOG_ABANDON_QUEST, AccessibleKey.ABANDON_QUEST));
++			}
++
++            if (CanRerollQuest())
++			{
++                ret.Add(LocalizationUtils.Format(LocalizationKey.UI_QUEST_LOG_REROLL_QUEST, AccessibleKey.REROLL_QUEST));
++			}
 +
 +            return ret;
-+        }
++		}
 +
-+        private string GetRewards()
-+        {
-+            if (m_quest.RewardTrackXp > 0) // New quests give XP as rewards instead of anything else
++        internal override bool HandleAccessibleInput()
++		{
++            if (base.HandleAccessibleInput())
 +            {
-+                return LocalizationUtils.Format(LocalizationKey.UI_QUEST_NO_NAME_XP_ONLY, m_quest.RewardTrackXp);
++                return true;
++            }
++            else if (AccessibleKey.REROLL_QUEST.IsPressed() && CanRerollQuest())
++			{
++				AccessibleWidgetUtils.ClickButton(GetRerollQuestButton());
++				return true;
++			}
++			else if (AccessibleKey.ABANDON_QUEST.IsPressed() && CanAbandonQuest())
++			{
++				AccessibleWidgetUtils.ClickButton(GetAbandonQuestButton());
++				return true;
++			}
++
++            return false;
++		}
++
++		private string GetRewards()
++        {
++            if (m_questDataModel.RewardTrackXp > 0) // New quests give XP as rewards instead of anything else
++            {
++                return LocalizationUtils.Format(LocalizationKey.UI_QUEST_NO_NAME_XP_ONLY, m_questDataModel.RewardTrackXp);
 +            }
 +
-+            var rewards = m_quest.Rewards; // Non-XP quests give other rewards
++            var rewards = m_questDataModel.Rewards; // Non-XP quests give other rewards
 +
 +            if (rewards == null)
 +            {
@@ -11036,13 +11624,61 @@ index 0000000..328a27f
 +
 +        private string GetProgress()
 +        {
-+            if (m_quest.Quota == 0)
++            if (m_questDataModel.Quota == 0)
 +            {
 +                return "";
 +            }
 +
-+            return LocalizationUtils.Format(LocalizationKey.TOAST_QUEST_PROGRESS_TOAST_PROGRESS, m_quest.Progress, m_quest.Quota);
++            return LocalizationUtils.Format(LocalizationKey.TOAST_QUEST_PROGRESS_TOAST_PROGRESS, m_questDataModel.Progress, m_questDataModel.Quota);
 +        }
++
++        public QuestDataModel GetQuestDataModel()
++		{
++            return m_questDataModel;
++		}
++
++        public Hearthstone.Progression.QuestTile GetQuestTile()
++		{
++            return m_questTile;
++		}
++
++        private bool CanAbandonQuest()
++		{
++            return GetAbandonQuestButton() != null;
++		}
++
++        private bool CanRerollQuest()
++		{
++            return GetRerollQuestButton() != null;
++		}
++
++		private PegUIElement GetAbandonQuestButton()
++		{
++            return GetAbandonOrRerollQuestButton("AbandonButton");
++		}
++
++		private PegUIElement GetRerollQuestButton()
++		{
++            return GetAbandonOrRerollQuestButton("RerollButton");
++		}
++
++        private PegUIElement GetAbandonOrRerollQuestButton(string buttonName)
++		{
++            if (m_questTile == null)
++			{
++                return null;
++			}
++
++            var buttonGO = AccessibleUnityUtils.GetChildObject(m_questTile.gameObject, $"Root/{buttonName}");
++            var button = AccessibleUnityUtils.GetComponent<PegUIElement>(buttonGO);
++
++            if (button == null || !button.isActiveAndEnabled)
++			{
++                return null;
++			}
++
++            return button;
++		}
 +    }
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleQuestTile.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleQuestTile.cs
@@ -14030,10 +14666,10 @@ index 0000000..98f65b1
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/CollectionManager/AccessibleCollectionDeckBoxVisual.cs b/Decompiled/Assembly-CSharp/Accessibility/CollectionManager/AccessibleCollectionDeckBoxVisual.cs
 new file mode 100644
-index 0000000..70df224
+index 0000000..8d8eab0
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/CollectionManager/AccessibleCollectionDeckBoxVisual.cs
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,97 @@
 +﻿using System;
 +using System.Collections.Generic;
 +
@@ -14067,14 +14703,6 @@ index 0000000..70df224
 +        {
 +            // Name and class
 +            var ret = GetCommonDeckLines();
-+
-+            if (Options.GetFormatType() == PegasusShared.FormatType.FT_STANDARD)
-+			{
-+                if (PegasusShared.FormatType.FT_STANDARD != m_deck.GetFormatType())
-+				{
-+                    ret.Add(GameStrings.GetFormatName(m_deck.GetFormatType()));
-+				}
-+			}
 +
 +            // Inform this can be converted if this is not a standard deck
 +            if (m_deck.CanClickToConvertToStandard())
@@ -14111,9 +14739,16 @@ index 0000000..70df224
 +            var deckName = m_deck.GetDeckNameText().Text;
 +            ret.Add(deckName);
 +
-+            // Hero name
-+            var className = GameStrings.GetClassName(m_deck.GetClass());
-+            if (!className.Equals(deckName, System.StringComparison.InvariantCultureIgnoreCase))
++            if (SceneMgr.Get()?.GetMode() != SceneMgr.Mode.ADVENTURE)
++			{
++				// Format
++				var deckFormat = m_deck.GetFormatType();
++				ret.Add(GameStrings.GetFormatName(deckFormat));
++			}
++
++			// Hero name
++			var className = GameStrings.GetClassName(m_deck.GetClass());
++            if (!className.Equals(deckName, StringComparison.InvariantCultureIgnoreCase))
 +            {
 +                ret.Add(className);
 +            }
@@ -15524,7 +16159,7 @@ index 0000000..9473d38
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 0000000..6d33e60
+index 0000000..5523568
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -15536,7 +16171,7 @@ index 0000000..6d33e60
 +    {
 +        public static string HEARTHSTONE_VERSION = "21.4.0.95431";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "11";
++        public static string HEARTHSTONE_ACCESS_VERSION = "12";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -15562,10 +16197,10 @@ index 0000000..6d33e60
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/InGameSystemTests.cs b/Decompiled/Assembly-CSharp/Accessibility/InGameSystemTests.cs
 new file mode 100644
-index 0000000..ef7d784
+index 0000000..1cf8e89
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/InGameSystemTests.cs
-@@ -0,0 +1,289 @@
+@@ -0,0 +1,291 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Globalization;
@@ -15748,6 +16383,8 @@ index 0000000..ef7d784
 +            AssertEquals("Stealth", LocalizationUtils.Get(LocalizationKey.GLOBAL_STEALTH));
 +            AssertEquals("Immune", LocalizationUtils.Get(LocalizationKey.GLOBAL_IMMUNE));
 +            AssertEquals("Dormant", LocalizationUtils.Get(LocalizationKey.GLOBAL_DORMANT));
++            AssertEquals("Enchantment", LocalizationUtils.Get(LocalizationKey.GLOBAL_ENCHANTMENT));
++            AssertEquals("Silence", LocalizationUtils.Get(LocalizationKey.GLOBAL_SILENCE));
 +            AssertEquals("The following sets are now Wild!", LocalizationUtils.Get(LocalizationKey.UI_SET_ROTATION_ROTATED_BOOSTERS_POPUP_TITLE));
 +            AssertEquals("Reconnecting", LocalizationUtils.Get(LocalizationKey.UI_RECONNECT_HELPER_DIALOG_RECONNECTING));
 +            AssertEquals("Options", LocalizationUtils.Get(LocalizationKey.GLOBAL_OPTIONS));
@@ -16392,10 +17029,10 @@ index 0000000..63cbf4b
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizationKey.cs b/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizationKey.cs
 new file mode 100644
-index 0000000..1e3c11f
+index 0000000..67bbdc7
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizationKey.cs
-@@ -0,0 +1,853 @@
+@@ -0,0 +1,874 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Linq;
@@ -16449,6 +17086,7 @@ index 0000000..1e3c11f
 +    public static LocalizationKey GLOBAL_MY_COLLECTION = CreateKey("GLUE_MY_COLLECTION");
 +    public static LocalizationKey GLOBAL_OPEN_PACKS = CreateKey("GLUE_OPEN_PACKS");
 +    public static LocalizationKey GLOBAL_JOURNAL = CreateKey("GLUE_TOOLTIP_BUTTON_JOURNAL_HEADLINE");
++    public static LocalizationKey GLOBAL_SHOP = CreateKey("GLUE_STORE_HEADLINE");
 +    public static LocalizationKey GLOBAL_HELP = CreateKey("GLOBAL_HELP");
 +    public static LocalizationKey GLOBAL_LOADING_GAME = CreateKey("ACCESSIBILITY_GLOBAL_LOADING_GAME");
 +    public static LocalizationKey GLOBAL_CLOSING_GAME = CreateKey("ACCESSIBILITY_GLOBAL_CLOSING_GAME");
@@ -16517,6 +17155,7 @@ index 0000000..1e3c11f
 +    public static LocalizationKey GLOBAL_IMMUNE = CreateKey("GLOBAL_KEYWORD_IMMUNE");
 +    public static LocalizationKey GLOBAL_DORMANT = CreateKey("GLOBAL_KEYWORD_DORMANT");
 +    public static LocalizationKey GLOBAL_ENCHANTMENT = CreateKey("GLOBAL_CARDTYPE_ENCHANTMENT");
++    public static LocalizationKey GLOBAL_SILENCE = CreateKey("GLOBAL_KEYWORD_SILENCE");
 +
 +    // Gameplay
 +    public static LocalizationKey GAMEPLAY_YOUR_TURN = CreateKey("GAMEPLAY_YOUR_TURN");
@@ -16838,7 +17477,6 @@ index 0000000..1e3c11f
 +    public static LocalizationKey UI_REWARD_SCROLL_HELP = CreateKey("ACCESSIBILITY_UI_REWARD_SCROLL_HELP");
 +
 +    // Quest notification popup
-+    public static LocalizationKey UI_QUEST_NOTIFICATION_POPUP_TITLE = CreateKey("ACCESSIBILITY_UI_QUEST_NOTIFICATION_POPUP_TITLE");
 +    public static LocalizationKey UI_QUEST_NOTIFICATION_POPUP_HELP = CreateKey("ACCESSIBILITY_UI_QUEST_NOTIFICATION_POPUP_HELP");
 +
 +    // Welcome quests
@@ -16893,6 +17531,11 @@ index 0000000..1e3c11f
 +    public static LocalizationKey UI_QUEST_NO_NAME_XP_ONLY = CreateKey("ACCESSIBILITY_UI_QUEST_NO_NAME_XP_ONLY");
 +    public static LocalizationKey UI_QUEST_REWARD_DESCRIPTION = CreateKey("ACCESSIBILITY_UI_QUEST_REWARD_DESCRIPTION");
 +    public static LocalizationKey UI_QUEST_REWARD_CHOOSE_ONE_DESCRIPTION = CreateKey("ACCESSIBILITY_UI_QUEST_REWARD_CHOOSE_ONE_DESCRIPTION");
++
++    // Quest log
++    public static LocalizationKey UI_QUEST_LOG_NO_QUESTS = CreateKey("ACCESSIBILITY_UI_QUEST_LOG_NO_QUESTS");
++    public static LocalizationKey UI_QUEST_LOG_ABANDON_QUEST = CreateKey("ACCESSIBILITY_UI_QUEST_LOG_ABANDON_QUEST");
++    public static LocalizationKey UI_QUEST_LOG_REROLL_QUEST = CreateKey("ACCESSIBILITY_UI_QUEST_LOG_REROLL_QUEST");
 +
 +    // Rewards track XP gains
 +    public static LocalizationKey UI_TRACK_REWARD_LEVEL_UP = CreateKey("ACCESSIBILITY_UI_TRACK_REWARD_LEVEL_UP");
@@ -16954,6 +17597,21 @@ index 0000000..1e3c11f
 +    public static LocalizationKey UI_SOCIAL_CHAT_MESSAGE_SENT = CreateKey("ACCESSIBILITY_UI_SOCIAL_CHAT_MESSAGE_SENT");
 +    public static LocalizationKey UI_SOCIAL_CHAT_SEND_MESSAGE = CreateKey("ACCESSIBILITY_UI_SOCIAL_CHAT_SEND_MESSAGE");
 +    public static LocalizationKey UI_SOCIAL_CHAT_TYPE_MESSAGE_PROMPT = CreateKey("ACCESSIBILITY_UI_SOCIAL_CHAT_TYPE_MESSAGE_PROMPT");
++
++    // Rewards Track
++    public static LocalizationKey UI_REWARDS_TRACK_READ_LEVEL = CreateKey("ACCESSIBILITY_UI_REWARDS_TRACK_READ_LEVEL");
++    public static LocalizationKey UI_REWARDS_TRACK_CLAIM_REWARDS = CreateKey("ACCESSIBILITY_UI_REWARDS_TRACK_CLAIM_REWARDS");
++    public static LocalizationKey UI_REWARDS_TRACK_CLAIM_REWARDS_NO_REWARDS = CreateKey("ACCESSIBILITY_UI_REWARDS_TRACK_CLAIM_REWARDS_NO_REWARDS");
++
++    // Shop
++    public static LocalizationKey UI_SHOP_READ_GOLD = CreateKey("ACCESSIBILITY_UI_SHOP_READ_GOLD");
++    public static LocalizationKey UI_SHOP_BUY_PACKS = CreateKey("ACCESSIBILITY_UI_SHOP_BUY_PACKS");
++    public static LocalizationKey UI_SHOP_BUY_MINI_SETS = CreateKey("ACCESSIBILITY_UI_SHOP_BUY_MINI_SETS");
++    public static LocalizationKey UI_SHOP_ITEM_READ_DESCRIPTION = CreateKey("ACCESSIBILITY_UI_SHOP_ITEM_READ_DESCRIPTION");
++    public static LocalizationKey UI_SHOP_ITEM_BUY_FOR_N_GOLD = CreateKey("ACCESSIBILITY_UI_SHOP_ITEM_BUY_FOR_N_GOLD");
++    public static LocalizationKey UI_SHOP_READ_CARDS = CreateKey("ACCESSIBILITY_UI_SHOP_READ_CARDS");
++    public static LocalizationKey UI_SHOP_READ_CARDS_HELP = CreateKey("ACCESSIBILITY_UI_SHOP_READ_CARDS_HELP");
++    public static LocalizationKey UI_SHOP_PURCHASE_COMPLETE_GOLD_REMAINING = CreateKey("ACCESSIBILITY_UI_SHOP_PURCHASE_COMPLETE_GOLD_REMAINING");
 +
 +    // Screens
 +    public static LocalizationKey SCREEN_GO_BACK = CreateKey("ACCESSIBILITY_SCREEN_GO_BACK");
@@ -17386,10 +18044,10 @@ index 0000000..dbc0139
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizedText.cs b/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizedText.cs
 new file mode 100644
-index 0000000..88f81f6
+index 0000000..1bf322e
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizedText.cs
-@@ -0,0 +1,68 @@
+@@ -0,0 +1,69 @@
 +﻿using Accessibility;
 +using System;
 +using System.Collections.Generic;
@@ -17439,6 +18097,7 @@ index 0000000..88f81f6
 +    public static string GLOBAL_IMMUNE => LocalizationUtils.Get(LocalizationKey.GLOBAL_IMMUNE);
 +    public static string GLOBAL_DORMANT => LocalizationUtils.Get(LocalizationKey.GLOBAL_DORMANT);
 +    public static string GLOBAL_ENCHANTMENT => LocalizationUtils.Get(LocalizationKey.GLOBAL_ENCHANTMENT);
++    public static string GLOBAL_SILENCE => LocalizationUtils.Get(LocalizationKey.GLOBAL_SILENCE);
 +
 +    // Gameplay
 +    public static string GAMEPLAY_YOUR_TURN => LocalizationUtils.Get(LocalizationKey.GAMEPLAY_YOUR_TURN);
@@ -17738,7 +18397,7 @@ index 0000000..0f96e9c
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/Ranked/AccessibleRankedUtils.cs b/Decompiled/Assembly-CSharp/Accessibility/Ranked/AccessibleRankedUtils.cs
 new file mode 100644
-index 0000000..70e0c81
+index 0000000..6527575
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/Ranked/AccessibleRankedUtils.cs
 @@ -0,0 +1,106 @@
@@ -17751,10 +18410,6 @@ index 0000000..70e0c81
 +{
 +    class AccessibleRankedUtils
 +    {
-+		private static bool s_cheatCanPlayWild;
-+
-+		private static bool s_cheatCanPlayClassic;
-+
 +        public static string GetBestRank(MedalInfoTranslator medalInfo)
 +        {
 +            if (medalInfo.IsDisplayable())
@@ -17813,39 +18468,43 @@ index 0000000..70e0c81
 +			return null;
 +		}
 +
-+		public static bool CanPlayRankedWild()
++		public static bool PlayerHasStandardDecks()
 +		{
-+			if (s_cheatCanPlayWild)
-+			{
-+				return true;
-+			}
-+
-+            return CollectionManager.Get().AccountCanSeeWild() ? CollectionManager.Get().GetNumberOfWildDecks() > 0 : false;
++			return CollectionManager.Get().GetNumberOfStandardDecks() > 0;
 +		}
 +
-+		public static bool CanPlayRankedClassic()
++		public static bool PlayerHasCasualDecks()
 +		{
-+			if (s_cheatCanPlayClassic)
++			// This is highly inefficient but maintainability and less conflicts are more important here
++			var numStandardDecks = CollectionManager.Get().GetNumberOfStandardDecks();
++			var numWildDecks = CollectionManager.Get().GetNumberOfWildDecks();
++			var numClassicDecks = CollectionManager.Get().GetNumberOfClassicDecks();
++
++			var numEligibleDecks = numStandardDecks + numWildDecks + numClassicDecks;
++
++			return numEligibleDecks > 0;
++		}
++
++		public static bool PlayerCanPlayWild()
++		{
++			if (!CollectionManager.Get().ShouldAccountSeeStandardWild())
 +			{
-+				return true;
++				return false;
 +			}
 +
++			// This is highly inefficient but maintainability and less conflicts are more important here
++			var numStandardDecks = CollectionManager.Get().GetNumberOfStandardDecks();
++			var numWildDecks = CollectionManager.Get().GetNumberOfWildDecks();
++
++			var numEligibleDecks = numStandardDecks + numWildDecks;
++
++			return numEligibleDecks > 0;
++		}
++
++		public static bool PlayerCanPlayClassic()
++		{
 +            return CollectionManager.Get().AccountCanSeeClassic() && CollectionManager.Get().GetNumberOfClassicDecks() > 0;
 +		}
-+
-+		#region Testing utils
-+
-+		internal static void Cheat_SetWildOverride(bool val)
-+		{
-+			s_cheatCanPlayWild = val;
-+		}
-+
-+		internal static void Cheat_SetClassicOverride(bool val)
-+		{
-+			s_cheatCanPlayClassic = val;
-+		}
-+
-+		#endregion
 +	}
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/ScreenReader.cs b/Decompiled/Assembly-CSharp/Accessibility/ScreenReader.cs
@@ -17904,6 +18563,252 @@ index 0000000..7422d75
 +            Tolk.Output("", true);
 +        }
 +    }
++}
+diff --git a/Decompiled/Assembly-CSharp/Accessibility/Shop/AccessibleShopUtils.cs b/Decompiled/Assembly-CSharp/Accessibility/Shop/AccessibleShopUtils.cs
+new file mode 100644
+index 0000000..d633215
+--- /dev/null
++++ b/Decompiled/Assembly-CSharp/Accessibility/Shop/AccessibleShopUtils.cs
+@@ -0,0 +1,240 @@
++﻿using Hearthstone.DataModels;
++using Hearthstone.UI;
++using System;
++using System.Collections.Generic;
++using System.Text;
++using UnityEngine;
++
++namespace Accessibility
++{
++	class AccessibleShopUtils
++	{
++		internal static bool CanProductOrVariantsBeBoughtWithGold(ProductDataModel dataModel)
++		{
++			var prices = dataModel.Prices;
++			var variants = dataModel.Variants;
++
++			if (HasGoldPrice(prices))
++			{
++				return true;
++			}
++
++			if (variants != null)
++			{
++				foreach (var variant in variants)
++				{
++					if (HasGoldPrice(variant.Prices))
++					{
++						return true;
++					}
++				}
++			}
++
++			return false;
++		}
++
++		internal static bool CanVariantBeBoughtWithGold(ProductDataModel dataModel)
++		{
++			var prices = dataModel.Prices;
++
++			return HasGoldPrice(prices);
++		}
++
++		internal static bool CanBeBoughtWithGold(ShopSlot slot)
++		{
++			if (!IsAvailable(slot))
++			{
++				return false;
++			}
++
++			var dataModel = slot.m_productDataModel;
++
++			if (dataModel == null)
++			{
++				return false;
++			}
++
++			return CanProductOrVariantsBeBoughtWithGold(dataModel);
++		}
++
++		internal static List<ShopSlot> FilterSlotsWhichCanBeBoughtWithGold(List<ShopSlot> slots)
++		{
++			var ret = new List<ShopSlot>();
++
++			foreach (var slot in slots)
++			{
++				if (CanBeBoughtWithGold(slot))
++				{
++					ret.Add(slot);
++				}
++			}
++
++			return ret;
++		}
++
++		internal static bool IsCardPackSlot(ShopSlot slot)
++		{
++			return IsSlotWithSingleRewardType(slot, RewardItemType.BOOSTER);
++		}
++
++		internal static bool IsMiniSetSlot(ShopSlot slot)
++		{
++			return IsSlotWithSingleRewardType(slot, RewardItemType.MINI_SET);
++		}
++
++		private static bool IsSlotWithSingleRewardType(ShopSlot slot, RewardItemType type)
++		{
++			var dataModel = slot.m_productDataModel;
++
++			if (dataModel == null)
++			{
++				return false;
++			}
++
++			var items = dataModel.Items;
++			if (items == null)
++			{
++				return false;
++			}
++
++			if (items.Count != 1)
++			{
++				return false;
++			}
++
++			return items[0].ItemType == type;
++		}
++
++		internal static bool IsAvailable(ShopSlot slot)
++		{
++			return IsAvailable(slot.m_productDataModel);
++		}
++
++		internal static bool IsAvailable(ProductDataModel dataModel)
++		{
++			return dataModel?.Availability == ProductAvailability.CAN_PURCHASE;
++		}
++
++		private static bool HasGoldPrice(DataModelList<PriceDataModel> prices)
++		{
++			if (prices == null)
++			{
++				return false;
++			}
++
++			foreach (var price in prices)
++			{
++				if (price.Currency == CurrencyType.GOLD)
++				{
++					return true;
++				}
++			}
++
++			return false;
++		}
++
++		internal static List<ProductDataModel> GetVariantsWhichCanBeBoughtWithGold(ProductDataModel product)
++		{
++			var ret = new List<ProductDataModel>();
++
++			foreach (var variant in product.Variants)
++			{
++				if (IsAvailable(variant) && CanVariantBeBoughtWithGold(variant))
++				{
++					ret.Add(variant);
++				}
++			}
++
++			return ret;
++		}
++
++		internal static long GetGoldCost(ProductDataModel variant)
++		{
++			foreach (var price in variant.Prices)
++			{
++				if (price.Currency == CurrencyType.GOLD)
++				{
++					return Mathf.RoundToInt(price.Amount);
++				}
++			}
++
++			return 0;
++		}
++
++		internal static List<string> CreateMultilineDescriptionForVariant(ProductDataModel variant)
++		{
++			var ret = new List<string>();
++
++			AccessibleCardUtils.AddLineIfExists(variant.DescriptionHeader, ret);
++
++			if (variant.Description != null)
++			{
++				var descLines = variant.Description.Split('•');
++
++				if (descLines != null)
++				{
++					foreach (var line in descLines)
++					{
++						if (line.Length > 0)
++						{
++							ret.Add(line);
++						}
++					}
++				}
++			}
++
++			return ret;
++		}
++
++		internal static long GetGoldBalance()
++		{
++			return ShopUtils.GetCachedBalance(CurrencyType.GOLD);
++		}
++
++		internal static bool HasEnoughGoldToBuyVariant(ProductDataModel variant)
++		{
++			var prices = variant.Prices;
++			var curBalance = GetGoldBalance();
++
++			foreach (var price in prices)
++			{
++				if (price.Currency == CurrencyType.GOLD && price.Amount <= curBalance)
++				{
++					return true;
++				}
++			}
++
++			return false;
++		}
++
++		internal static int GetGoldPriceOptionForVariant(ProductDataModel variant)
++		{
++			var prices = variant.Prices;
++			var curBalance = GetGoldBalance();
++
++			for (int i = 0; i < prices.Count; i++)
++			{
++				var price = prices[i];
++
++				if (price.Currency == CurrencyType.GOLD && price.Amount <= curBalance)
++				{
++					return i;
++				}
++			}
++
++			return -1;
++		}
++
++		internal static void ReadGold(AccessibleComponent speaker)
++		{
++			var gold = GetGoldBalance();
++			AccessibilityMgr.Output(speaker, LocalizationUtils.Format(LocalizationKey.UI_REWARD_N_GOLD, gold));
++		}
++
++		internal static void ReadRemainingGold(AccessibleComponent speaker)
++		{
++			var gold = GetGoldBalance();
++			AccessibilityMgr.Output(speaker, LocalizationUtils.Format(LocalizationKey.UI_SHOP_PURCHASE_COMPLETE_GOLD_REMAINING, gold));
++		}
++	}
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/Social/AccessibleFriendListFriendFrame.cs b/Decompiled/Assembly-CSharp/Accessibility/Social/AccessibleFriendListFriendFrame.cs
 new file mode 100644
@@ -18056,6 +18961,463 @@ index 0000000..6733da9
 +            UIStatus.Get().AddInfo(LocalizationUtils.Get(LocalizationKey.UI_SOCIAL_BATTLETAG_COPIED_TO_CLIPBOARD));
 +        }
 +    }
++}
+diff --git a/Decompiled/Assembly-CSharp/Accessibility/Testing/AccessibleQuestsTestingUtils.cs b/Decompiled/Assembly-CSharp/Accessibility/Testing/AccessibleQuestsTestingUtils.cs
+new file mode 100644
+index 0000000..7f013f8
+--- /dev/null
++++ b/Decompiled/Assembly-CSharp/Accessibility/Testing/AccessibleQuestsTestingUtils.cs
+@@ -0,0 +1,245 @@
++﻿using Assets;
++using Hearthstone.DataModels;
++using Hearthstone.Progression;
++using PegasusUtil;
++using System;
++using System.Collections.Generic;
++using System.Text;
++
++namespace Accessibility
++{
++    class AccessibleQuestsTestingUtils
++    {
++		private static QuestListDataModel s_quests;
++
++		private static bool s_poolEnabled;
++
++		private static RerollQuestResponse s_rerollResponse;
++
++		internal static bool SetScenario(int scenarioId)
++		{
++			switch (scenarioId)
++			{
++				case 0:
++					s_poolEnabled = false;
++					s_quests = null;
++					return true;
++				case 1:
++					s_poolEnabled = false;
++					s_quests = CreateQuestListDataModel(new int[] { });
++					return true;
++				case 2:
++					// Daily quests only
++					s_poolEnabled = false;
++					s_quests = CreateQuestListDataModel(new int[] { 142, 126 });
++					return true;
++				case 3:
++					// Weekly quests only
++					s_poolEnabled = true;
++					s_quests = CreateQuestListDataModel(new int[] { -1, 98, 97, 94 });
++					return true;
++				case 4:
++					// 4 daily + 3 weekly
++					s_poolEnabled = true;
++					s_quests = CreateQuestListDataModel(new int[] { 142, 126, 64, 56, 98, 97, 94 });
++					return true;
++				case 5:
++					// 5 "daily" to test bounds (which are 4)
++					s_poolEnabled = false;
++					s_quests = CreateQuestListDataModel(new int[] { 142, 126, 64, 56, 22 });
++					return true;
++				case 6:
++					// 5 daily + 3 weekly
++					s_poolEnabled = true;
++					s_quests = CreateQuestListDataModel(new int[] { 142, 126, 64, 56, 22, 98, 97, 94 });
++					return true;
++				case 7:
++					// Including "next quest in X" tiles
++					s_poolEnabled = true;
++					s_quests = CreateQuestListDataModel(new int[] { 142, 126, 64, -1, 98, 97, -2, -2 });
++					return true;
++				case 8:
++					// All quests complete scenario
++					s_poolEnabled = true;
++					s_quests = CreateQuestListDataModel(new int[] { -1, -2, -2, -2 });
++					return true;
++				// Abandon scenarios
++				case 9:
++					// Abandon first quest
++					s_poolEnabled = false;
++					s_quests = CreateQuestListDataModel(new int[] { 142, 126 });
++					return true;
++				case 10:
++					// Abandon last quest
++					s_poolEnabled = false;
++					s_quests = CreateQuestListDataModel(new int[] { 126, 142 });
++					return true;
++				case 11:
++					// Abandon only quest
++					s_poolEnabled = false;
++					s_quests = CreateQuestListDataModel(new int[] { 142 });
++					return true;
++				case 12:
++					// Abandon only daily quest when a weekly one exists as well
++					s_poolEnabled = true;
++					s_quests = CreateQuestListDataModel(new int[] { 142, 98 });
++					return true;
++				// Reroll scenarios
++				case 13:
++					s_poolEnabled = true;
++					s_quests = CreateQuestListDataModel(new int[] { -1, 98, -2, -2 });
++					return true;
++				case 99:
++					// Weekly quests only - special QuestsPopupOnLoginTest scenario
++					s_poolEnabled = true;
++					s_quests = CreateQuestListDataModel(new int[] { 98, 97, 94 });
++					return true;
++				default:
++					return false;
++			}
++		}
++
++		private static QuestListDataModel CreateQuestListDataModel(int[] questIds)
++		{
++			var ret = new QuestListDataModel();
++			ret.Quests = new Hearthstone.UI.DataModelList<QuestDataModel>();
++
++			foreach (var questId in questIds)
++			{
++				if (questId == -1)
++				{
++					var questPoolRecord = GetQuestPoolRecord(QuestPool.QuestPoolType.DAILY);
++					var timeUntilNextQuestString = QuestManager.Get().GetElapsedTimeString(new TimeSpan(3, 59, 0));
++					var questTile = QuestManager.Get().CreateNextQuestTimeDataModel(questPoolRecord, timeUntilNextQuestString);
++					ret.Quests.Add(questTile);
++				}
++				else if (questId == -2)
++				{
++					var questPoolRecord = GetQuestPoolRecord(QuestPool.QuestPoolType.WEEKLY);
++					var timeUntilNextQuestString = QuestManager.Get().GetElapsedTimeString(new TimeSpan(24 * 6 + 23, 0, 0));
++					var questTile = QuestManager.Get().CreateNextQuestTimeDataModel(questPoolRecord, timeUntilNextQuestString);
++					ret.Quests.Add(questTile);
++				}
++				else
++				{
++					ret.Quests.Add(QuestManager.Get().CreateQuestDataModelById(questId));
++				}
++			}
++
++			return ret;
++		}
++
++		private static QuestPoolDbfRecord GetQuestPoolRecord(QuestPool.QuestPoolType questPoolType)
++		{
++			var records = GameDbf.QuestPool.GetRecords();
++
++			foreach(var record in records)
++			{
++				if (record.QuestPoolType == questPoolType)
++				{
++					return record;
++				}
++			}
++
++			return null;
++		}
++
++		internal static QuestListDataModel GetQuests()
++		{
++			return s_quests;
++		}
++
++		internal static QuestListDataModel GetQuestsForPoolType(QuestPool.QuestPoolType questPoolType)
++		{
++			if (s_quests == null)
++			{
++				return CreateQuestListDataModel(new int[] { });
++			}
++
++			var ret = new QuestListDataModel();
++			ret.Quests = new Hearthstone.UI.DataModelList<QuestDataModel>();
++
++			foreach (var quest in s_quests.Quests)
++			{
++				if (quest.PoolType == questPoolType)
++				{
++					ret.Quests.Add(quest);
++				}
++			}
++
++			return ret;
++		}
++
++		internal static bool IsMockingQuests()
++		{
++			return s_quests != null;
++		}
++
++		internal static PlayerQuestStateUpdate GetPlayerQuestStateUpdate()
++		{
++			var ret = new PlayerQuestStateUpdate();
++			ret.Quest = new List<PlayerQuestState>();
++
++			foreach (var quest in s_quests.Quests)
++			{
++				var questState = new PlayerQuestState();
++				questState.QuestId = quest.QuestId;
++				questState.Progress = quest.Progress;
++				questState.Status = (int)quest.Status;
++				ret.Quest.Add(questState);
++			}
++
++			return ret;
++		}
++
++		internal static bool RerollQuest(int questId)
++		{
++			s_rerollResponse = new RerollQuestResponse();
++			s_rerollResponse.RerolledQuestId = questId;
++			s_rerollResponse.GrantedQuestId = 94;
++			s_rerollResponse.Success = true;
++
++			return true;
++		}
++
++		internal static void ReceiveRerollQuestResponseMessage()
++		{
++			QuestManager.Get().ReceiveRerollQuestResponseMessage();
++		}
++
++		internal static bool AbandonQuest(int questId)
++		{
++			return true;
++		}
++
++		internal static PlayerQuestPoolStateUpdate GetPlayerQuestPoolStateUpdate()
++		{
++			var ret = new PlayerQuestPoolStateUpdate();
++			ret.QuestPool = new List<PlayerQuestPoolState>();
++			var dailyState = new PlayerQuestPoolState();
++			dailyState.QuestPoolId = GetQuestPoolRecord(QuestPool.QuestPoolType.DAILY).ID;
++			dailyState.RerollAvailableCount = 0;
++			dailyState.SecondsUntilNextGrant = 4 * 60 * 60;
++
++			var weeklyState = new PlayerQuestPoolState();
++			weeklyState.QuestPoolId = GetQuestPoolRecord(QuestPool.QuestPoolType.WEEKLY).ID;
++			weeklyState.RerollAvailableCount = 1;
++			weeklyState.SecondsUntilNextGrant = 7 * 24 * 60 * 60;
++
++			ret.QuestPool.Add(dailyState);
++			ret.QuestPool.Add(weeklyState);
++
++			return ret;
++		}
++
++		internal static RerollQuestResponse GetRerollQuestResponse()
++		{
++			return s_rerollResponse;
++		}
++
++		internal static bool CanBeGrantedPoolQuests()
++		{
++			return s_poolEnabled;
++		}
++	}
++}
+diff --git a/Decompiled/Assembly-CSharp/Accessibility/Testing/AccessibleRewardsTrackTestingUtils.cs b/Decompiled/Assembly-CSharp/Accessibility/Testing/AccessibleRewardsTrackTestingUtils.cs
+new file mode 100644
+index 0000000..0f1695e
+--- /dev/null
++++ b/Decompiled/Assembly-CSharp/Accessibility/Testing/AccessibleRewardsTrackTestingUtils.cs
+@@ -0,0 +1,200 @@
++﻿using Hearthstone.Progression;
++using PegasusUtil;
++using System.Collections.Generic;
++
++namespace Accessibility
++{
++	class AccessibleRewardsTrackTestingUtils
++	{
++		private static int TEST_TRACK_ID = 23;
++
++		private static Map<int, PlayerRewardTrackLevelState> s_cheatState;
++
++		private static bool s_premiumRewardsUnlocked;
++
++		private static int s_currentTrackLevel;
++
++		private static int s_currentTrackId;
++
++		internal static bool SetScenario(int scenarioId)
++		{
++			var ret = SetScenarioInternal(scenarioId);
++			RewardTrackManager.Get().Cheat_SetPlayerRewardTrackLevelState(s_cheatState);
++			return ret;
++		}
++
++		private static bool SetScenarioInternal(int scenarioId)
++		{
++			switch(scenarioId)
++			{
++				case 0:
++					s_cheatState = null;
++					s_premiumRewardsUnlocked = false;
++					s_currentTrackLevel = 0;
++					s_currentTrackId = 0;
++					return true;
++				case 1:
++					CreateStateUpToLevel(0, 1, TEST_TRACK_ID, false);
++					return true;
++				case 2:
++					CreateStateUpToLevel(10, 12, TEST_TRACK_ID, false);
++					return true;
++				case 3:
++					CreateStateUpToLevel(13, 16, TEST_TRACK_ID, false);
++					return true;
++				case 4:
++					CreateStateUpToLevel(13, 16, TEST_TRACK_ID, true);
++					return true;
++				case 5:
++					CreateStateUpToLevel(100, 103, TEST_TRACK_ID, true);
++					return true;
++				case 6:
++					// Choose one
++					CreateStateUpToLevel(99, 100, TEST_TRACK_ID, true);
++					return true;
++				case 7:
++					// Nothing to claim from the start
++					CreateStateUpToLevel(1, 1, TEST_TRACK_ID, false);
++					return true;
++				default:
++					return false;
++			}
++		}
++
++		private static void CreateStateUpToLevel(int lastClaimedLevel, int curLevel, int trackId, bool includePremium)
++		{
++			s_cheatState = new Map<int, PlayerRewardTrackLevelState>();
++
++			var paidRewardStatus = includePremium ? 1 : 0;
++
++			for (int i = 1; i <= lastClaimedLevel; i++)
++			{
++				s_cheatState[i] = new PlayerRewardTrackLevelState
++				{
++					Level = i,
++					FreeRewardStatus = 1,
++					PaidRewardStatus = paidRewardStatus
++				};
++			}
++
++			for (int i = lastClaimedLevel + 1; i <= curLevel; i++)
++			{
++				s_cheatState[i] = new PlayerRewardTrackLevelState
++				{
++					Level = i,
++					FreeRewardStatus = 0,
++					PaidRewardStatus = 0
++				};
++			}
++
++			s_currentTrackId = trackId;
++			s_currentTrackLevel = curLevel;
++			s_premiumRewardsUnlocked = includePremium;
++		}
++
++		internal static bool IsMockingRewardsTrack()
++		{
++			return s_cheatState != null;
++		}
++
++		private static PlayerRewardTrackState s_stateUpdateAckdReward;
++
++		internal static bool AckRewardTrackReward(int rewardTrackId, int level, bool forPaidTrack)
++		{
++			// Note: turns out this isn't actually needed as ACKs are fire and forget
++			s_stateUpdateAckdReward = CreatePlayerRewardTrackStateUpdate(rewardTrackId, level, forPaidTrack, 2);
++
++			var notif = "Waiting for ACK response";
++			AccessibilityMgr.OutputNotification(notif);
++
++			return true;
++		}
++
++		private static PlayerRewardTrackState s_stateUpdateClaimedReward;
++
++		internal static bool ClaimRewardTrackReward(int rewardTrackId, int level, bool forPaidTrack, int chooseOneRewardItemId)
++		{
++			s_stateUpdateClaimedReward = CreatePlayerRewardTrackStateUpdate(rewardTrackId, level, forPaidTrack, 1);
++
++			if (chooseOneRewardItemId != 0)
++			{
++				RewardItemOutput rewardItem = new RewardItemOutput();
++				rewardItem.RewardItemId = chooseOneRewardItemId;
++				var rewardItemOutputs = new List<RewardItemOutput>();
++				rewardItemOutputs.Add(rewardItem);
++
++				s_stateUpdateClaimedReward.TrackLevel[0].RewardItemOutput = rewardItemOutputs;
++			}
++
++			var notif = "Waiting for Claimed response";
++			AccessibilityMgr.OutputNotification(notif);
++
++			return true;
++		}
++
++		private static PlayerRewardTrackState CreatePlayerRewardTrackStateUpdate(int rewardTrackId, int level, bool forPaidTrack, int newStatus)
++		{
++			var ret = new PlayerRewardTrackState();
++			ret.RewardTrackId = rewardTrackId;
++			ret.Level = level;
++			ret.TrackLevel = new List<PlayerRewardTrackLevelState>();
++
++			var curLevelState = s_cheatState[level];
++			var levelState = new PlayerRewardTrackLevelState();
++			levelState.Level = curLevelState.Level;
++			levelState.FreeRewardStatus = curLevelState.FreeRewardStatus;
++			levelState.PaidRewardStatus = curLevelState.PaidRewardStatus;
++
++			if (forPaidTrack)
++			{
++				levelState.PaidRewardStatus = newStatus;
++			}
++			else
++			{
++				levelState.FreeRewardStatus = newStatus;
++			}
++
++			ret.TrackLevel.Add(levelState);
++
++			return ret;
++		}
++
++		internal static bool TriggerClaimedRewardResponse()
++		{
++			if (s_stateUpdateClaimedReward != null)
++			{
++				RewardTrackManager.Get().HandleRewardTrackStateUpdate(s_stateUpdateClaimedReward);
++				return true;
++			}
++
++			return false;
++		}
++
++		internal static bool TriggerAckdRewardResponse()
++		{
++			// This isn't actually needed as the ACK after grant is fire and forget
++			if (s_stateUpdateAckdReward != null)
++			{
++				RewardTrackManager.Get().HandleRewardTrackStateUpdate(s_stateUpdateAckdReward);
++				return true;
++			}
++
++			return false;
++		}
++
++		internal static bool ArePremiumRewardsUnlocked()
++		{
++			return s_premiumRewardsUnlocked;
++		}
++
++		internal static int GetCurrentTrackLevel()
++		{
++			return s_currentTrackLevel;
++		}
++
++		internal static int GetCurrentTrackId()
++		{
++			return s_currentTrackId;
++		}
++	}
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/Tutorials/AccessibleTutorial_01.cs b/Decompiled/Assembly-CSharp/Accessibility/Tutorials/AccessibleTutorial_01.cs
 new file mode 100644
@@ -23452,8 +24814,158 @@ index 7582f8a..59e0ec7 100644
  	public void SetTargetVisibility(bool visible)
  	{
  		m_shouldBeVisible = visible;
+diff --git a/Decompiled/Assembly-CSharp/BoosterProductPage.cs b/Decompiled/Assembly-CSharp/BoosterProductPage.cs
+index 67bf488..ad57936 100644
+--- a/Decompiled/Assembly-CSharp/BoosterProductPage.cs
++++ b/Decompiled/Assembly-CSharp/BoosterProductPage.cs
+@@ -5,6 +5,7 @@ using Blizzard.T5.AssetManager;
+ using Hearthstone.DataModels;
+ using Hearthstone.UI;
+ using UnityEngine;
++using Accessibility;
+ 
+ public class BoosterProductPage : ProductPage
+ {
+@@ -208,4 +209,137 @@ public class BoosterProductPage : ProductPage
+ 			minQuantity++;
+ 		}
+ 	}
++
++	#region Accessibility
++
++	private enum State
++	{
++		LOADING,
++		CHOOSING_VARIANT,
++		READING_VARIANT_MENU,
++		READING_VARIANT_DESCRIPTION,
++	}
++
++	private State m_curState;
++
++	private AccessibleMenu m_accessibleMenu;
++
++	private AccessibleMenu m_readingVariantMenu;
++
++	private AccessibleMultilineText m_variantDescription;
++
++	public override void ReadProductPage()
++	{
++		var product = m_container.Product;
++
++		var availableVariants = AccessibleShopUtils.GetVariantsWhichCanBeBoughtWithGold(product);
++
++		if (availableVariants.Count == 0)
++		{
++			return;
++		}
++
++		var productName = product.Name;
++		m_accessibleMenu = new AccessibleMenu(m_container, productName, m_container.Close);
++
++		foreach (var variant in availableVariants)
++		{
++			m_accessibleMenu.AddOption(variant.VariantName, () => ChooseVariant(variant));
++		}
++
++		ReadChoosingVariantMenu();
++	}
++
++	private void ReadChoosingVariantMenu()
++	{
++		m_accessibleMenu.StartReading();
++		m_curState = State.CHOOSING_VARIANT;
++	}
++
++	private void ChooseVariant(ProductDataModel variant)
++	{
++		//m_container.SetProduct(m_container.Product, variant);
++		SelectVariant(variant);
++
++		m_readingVariantMenu = new AccessibleMenu(m_container, "", ReadChoosingVariantMenu);
++
++		var goldCost = AccessibleShopUtils.GetGoldCost(variant);
++		var buyText = LocalizationUtils.Format(LocalizationKey.UI_SHOP_ITEM_BUY_FOR_N_GOLD, goldCost);
++
++		m_readingVariantMenu.AddOption(LocalizationUtils.Get(LocalizationKey.UI_SHOP_ITEM_READ_DESCRIPTION), () => ReadVariantDescription(variant));
++		m_readingVariantMenu.AddOption(buyText, () => BuyVariant(variant));
++
++		ReadVariantMenu();
++	}
++
++	private void ReadVariantMenu()
++	{
++		m_readingVariantMenu.StartReading();
++		m_curState = State.READING_VARIANT_MENU;
++	}
++
++	private void ReadVariantDescription(ProductDataModel variant)
++	{
++		var descriptionLines = AccessibleShopUtils.CreateMultilineDescriptionForVariant(variant);
++
++		m_variantDescription = new AccessibleMultilineText(m_container, descriptionLines);
++		m_variantDescription.ReadAllLines();
++		m_curState = State.READING_VARIANT_DESCRIPTION;
++	}
++
++	internal override void OnStorePurchaseAuthClosed(bool purchaseSuccess)
++	{
++		if (purchaseSuccess)
++		{
++			ReadRemainingGold();
++		}
++
++		if (m_curState == State.READING_VARIANT_MENU)
++		{
++			ReadVariantMenu();
++		}
++	}
++
++	public override void HandleAccessibleInput()
++	{
++		if (m_curState == State.CHOOSING_VARIANT)
++		{
++			m_accessibleMenu?.HandleAccessibleInput();
++		}
++		else if (m_curState == State.READING_VARIANT_MENU)
++		{
++			m_readingVariantMenu?.HandleAccessibleInput();
++		}
++		else if (m_curState == State.READING_VARIANT_DESCRIPTION)
++		{
++			if (AccessibleKey.BACK.IsPressed())
++			{
++				ReadVariantMenu();
++			}
++			else
++			{
++				m_variantDescription?.HandleAccessibleInput();
++			}
++		}
++	}
++
++	public override string GetAccessibleHelp()
++	{
++		if (m_curState == State.CHOOSING_VARIANT)
++		{
++			return m_accessibleMenu?.GetHelp();
++		}
++		else if (m_curState == State.READING_VARIANT_MENU)
++		{
++			return m_readingVariantMenu?.GetHelp();
++		}
++		else if (m_curState == State.READING_VARIANT_DESCRIPTION)
++		{
++			return AccessibleSpeech.PRESS_BACK_TO_GO_BACK;
++		}
++
++		return "";
++	}
++
++	#endregion
+ }
 diff --git a/Decompiled/Assembly-CSharp/Box.cs b/Decompiled/Assembly-CSharp/Box.cs
-index 8fe89fb..b30ece8 100644
+index 8fe89fb..205afc6 100644
 --- a/Decompiled/Assembly-CSharp/Box.cs
 +++ b/Decompiled/Assembly-CSharp/Box.cs
 @@ -6,6 +6,7 @@ using Hearthstone.Progression;
@@ -23501,6 +25013,14 @@ index 8fe89fb..b30ece8 100644
  		Log.Box.Print("Set Rotation Button Pressed!");
  		if (!HearthstoneServices.IsAvailable<SceneMgr>())
  		{
+@@ -2680,6 +2684,7 @@ public class Box : MonoBehaviour
+ 		{
+ 			Log.Store.Print(reasonLogLevel, verbose: false, unableToOpenReason);
+ 			SoundManager.Get().LoadAndPlay("Store_closed_button_click.prefab:a6b74848e2c7e5748a20524b40fe6c1e", base.gameObject);
++			AccessibilityMgr.Output(AccessibleHub.Get(), GameStrings.Get("GLUE_SHOP_CLOSED_ALERT_HEADER"));
+ 			return;
+ 		}
+ 		FireButtonPressEvent(ButtonType.STORE);
 diff --git a/Decompiled/Assembly-CSharp/ButtonListMenu.cs b/Decompiled/Assembly-CSharp/ButtonListMenu.cs
 index 802a573..e462f80 100644
 --- a/Decompiled/Assembly-CSharp/ButtonListMenu.cs
@@ -23932,7 +25452,7 @@ index be1e317..4cface0 100644
  	}
  
 diff --git a/Decompiled/Assembly-CSharp/Cheats.cs b/Decompiled/Assembly-CSharp/Cheats.cs
-index 09ac2b3..804f72a 100644
+index 09ac2b3..0e2e6ec 100644
 --- a/Decompiled/Assembly-CSharp/Cheats.cs
 +++ b/Decompiled/Assembly-CSharp/Cheats.cs
 @@ -36,6 +36,7 @@ using PegasusUtil;
@@ -23943,7 +25463,7 @@ index 09ac2b3..804f72a 100644
  
  public class Cheats : IService
  {
-@@ -392,6 +393,46 @@ public class Cheats : IService
+@@ -392,6 +393,52 @@ public class Cheats : IService
  		CheatMgr cheatMgr = serviceLocator.Get<CheatMgr>();
  		if (HearthstoneApplication.IsInternal())
  		{
@@ -23958,6 +25478,11 @@ index 09ac2b3..804f72a 100644
 +			cheatMgr.RegisterCheatHandler("hsashowquesttoastmount", OnProcessCheat_hsashowquesttoastmount, "Show a quest toast which rewards a mount", "<command>", "");
 +			cheatMgr.RegisterCheatHandler("hsashowquesttoastminiset", OnProcessCheat_hsashowquesttoastminiset, "Show a quest toast which rewards a mini set", "<command>", "");
 +			cheatMgr.RegisterCheatHandler("hsashowwelcomequests", OnProcessCheat_hsashowwelcomequests, "Show welcome quests", "<command>", "");
++			cheatMgr.RegisterCheatHandler("hsamockquests", OnProcessCheat_hsamockquests, "Mock quests to test the daily popup and journal", "<scenarioID>", "");
++			cheatMgr.RegisterCheatHandler("hsatriggerrerollquestresponse", OnProcessCheat_hsatriggerrerollquestresponse, "Trigger a fake reroll quest response message", "<command>", "");
++			cheatMgr.RegisterCheatHandler("hsamocktrackrewards", OnProcessCheat_hsamocktrackrewards, "Mock track rewards", "<scenarioID>", "");
++			cheatMgr.RegisterCheatHandler("hsatriggertrackrewardclaimedresponse", OnProcessCheat_hsatriggertrackrewardclaimedresponse, "Trigger a fake track reward claimed response", "", "");
++			cheatMgr.RegisterCheatHandler("hsatriggertrackrewardackdresponse", OnProcessCheat_hsatriggertrackrewardackdresponse, "Trigger a fake track reward ACK'd response", "", "");
 +			cheatMgr.RegisterCategory("HSA Returning player");
 +			cheatMgr.RegisterCheatHandler("hsashowreturningplayerbanner", OnProcessCheat_hsashowreturningplayerbanner, "Show returning player banner", "<command>", "");
 +			cheatMgr.RegisterCategory("HSA Basic popups");
@@ -23983,14 +25508,15 @@ index 09ac2b3..804f72a 100644
 +			cheatMgr.RegisterCheatHandler("hsasetupnearbyplayers", OnProcessCheat_hsasetupnearbyplayers, "Setup test nearby players", "<command>", "");
 +			cheatMgr.RegisterCategory("HSA PvP");
 +			cheatMgr.RegisterCheatHandler("hsasetpvp", OnProcessCheat_hsasetpvp, "Sets the PvP menu override", "<true/false>", "true");
-+			cheatMgr.RegisterCheatHandler("hsasetwild", OnProcessCheat_hsasetwild, "Sets the Wild menu override", "<true/false>", "true");
-+			cheatMgr.RegisterCheatHandler("hsasetclassic", OnProcessCheat_hsasetclassic, "Sets the Classic menu override", "<true/false>", "true");
++			cheatMgr.RegisterCheatHandler("hsasetwild", OnProcessCheat_hsasetwild, "Faked wild mode unlocked (includes classic)", "<true/false>", "true");
 +			cheatMgr.RegisterCheatHandler("hsaresetpvpoverrides", OnProcessCheat_hsaresetpvpoverrides, "Resets PvP overrides", "<true/false>", "true");
 +			cheatMgr.RegisterCheatHandler("hsasetformattype", OnProcessCheat_hsasetformattype, "Sets format type", "[standard|wild|classic]", "standard");
++			cheatMgr.RegisterCheatHandler("hsasetnumdecks", OnProcessCheat_hsasetnumdecks, "Overrides the number of decks for a given format", "[standard|wild|classic] <numDecks>", "standard 0");
++			cheatMgr.RegisterCheatHandler("hsaresetnumdecks", OnProcessCheat_hsaresetnumdecks, "Resets any num decks overrides", "<command>", "");
  			cheatMgr.RegisterCategory("help");
  			cheatMgr.RegisterCheatHandler("help", OnProcessCheat_help, "Get help for a specific command or list of commands", "<command name>", "");
  			cheatMgr.RegisterCheatHandler("example", OnProcessCheat_example, "Run an example of this command if one exists", "<command name>");
-@@ -485,7 +526,7 @@ public class Cheats : IService
+@@ -485,7 +532,7 @@ public class Cheats : IService
  			cheatMgr.RegisterCheatHandler("iksaction", OnProcessCheat_iksgameaction, "Execute a game action as if IKS was clicked.");
  			cheatMgr.RegisterCheatHandler("iksseen", OnProcessCheat_iksseen, "Determine if an IKS message should be seen by its game action.");
  			cheatMgr.RegisterCategory("rank");
@@ -23999,7 +25525,7 @@ index 09ac2b3..804f72a 100644
  			cheatMgr.RegisterCheatHandler("rankrefresh", OnProcessCheat_rankrefresh, "Request medalinfo from server and show rankchange twoscoop after receiving it");
  			cheatMgr.RegisterCheatHandler("rankchange", OnProcessCheat_rankchange, "Show a fake rankchange twoscoop", "[rank] [up|down|win|loss] [wild] [winstreak] [chest]", "bronze5 up chest");
  			cheatMgr.RegisterCheatHandler("rankreward", OnProcessCheat_rankreward, "Show a fake RankedRewardDisplay for rank (or all ranks up to a rank)", "<rank> [standard|wild|classic|all]", "bronze5 all");
-@@ -688,7 +729,7 @@ public class Cheats : IService
+@@ -688,7 +735,7 @@ public class Cheats : IService
  		yield break;
  	}
  
@@ -24008,7 +25534,7 @@ index 09ac2b3..804f72a 100644
  	{
  		return new Type[2]
  		{
-@@ -3205,8 +3246,10 @@ public class Cheats : IService
+@@ -3205,8 +3252,10 @@ public class Cheats : IService
  		}
  		if (flag)
  		{
@@ -24021,7 +25547,7 @@ index 09ac2b3..804f72a 100644
  			QuestToast.ShowQuestToast(UserAttentionBlocker.ALL, null, updateCacheValues: false, achievement);
  		}
  		else
-@@ -3597,7 +3640,7 @@ public class Cheats : IService
+@@ -3597,7 +3646,7 @@ public class Cheats : IService
  
  	private bool OnProcessCheat_setRotationRotatedBoostersPopup(string func, string[] args, string rawArgs)
  	{
@@ -24030,7 +25556,7 @@ index 09ac2b3..804f72a 100644
  		DialogManager.Get().ShowSetRotationTutorialPopup(UserAttentionBlocker.SET_ROTATION_INTRO, info);
  		return true;
  	}
-@@ -10481,7 +10524,7 @@ public class Cheats : IService
+@@ -10481,7 +10530,7 @@ public class Cheats : IService
  
  	private bool OnProcessCheat_showtrackreward(string func, string[] args, string rawArgs)
  	{
@@ -24039,7 +25565,7 @@ index 09ac2b3..804f72a 100644
  		if (!int.TryParse(args[0], out var level))
  		{
  			UIStatus.Get().AddInfo(message);
-@@ -10492,6 +10535,7 @@ public class Cheats : IService
+@@ -10492,6 +10541,7 @@ public class Cheats : IService
  		{
  			bool.TryParse(args[1], out result);
  		}
@@ -24047,7 +25573,7 @@ index 09ac2b3..804f72a 100644
  		RewardTrackLevelDbfRecord rewardTrackLevelDbfRecord = RewardTrackManager.Get().RewardTrackAsset.Levels.Where((RewardTrackLevelDbfRecord r) => r.Level == level).FirstOrDefault();
  		if (rewardTrackLevelDbfRecord == null)
  		{
-@@ -10511,6 +10555,10 @@ public class Cheats : IService
+@@ -10511,6 +10561,10 @@ public class Cheats : IService
  			}
  			return true;
  		}
@@ -24058,7 +25584,7 @@ index 09ac2b3..804f72a 100644
  		RewardScroll.DebugShowFake(RewardTrackFactory.CreateRewardScrollDataModel(num, level));
  		return true;
  	}
-@@ -10690,4 +10738,454 @@ public class Cheats : IService
+@@ -10690,4 +10744,514 @@ public class Cheats : IService
  		UIStatus.Get().AddError("Lettuce Collection does not exist in scene, cannot show popups");
  		return false;
  	}
@@ -24153,6 +25679,50 @@ index 09ac2b3..804f72a 100644
 +        Achievement achievement = AchieveManager.Get().GetAchievement(58);
 +        WelcomeQuests.ShowSpecialQuest(UserAttentionBlocker.ALL, achievement);
 +        return true;
++    }
++
++    private bool OnProcessCheat_hsamockquests(string func, string[] args, string rawArgs)
++    {
++		if (args.Length != 1)
++		{
++			return false;
++		}
++		if (!GeneralUtils.TryParseInt(args[0], out var intVal))
++		{
++			return false;
++		}
++
++		return AccessibleQuestsTestingUtils.SetScenario(intVal);
++    }
++
++    private bool OnProcessCheat_hsamocktrackrewards(string func, string[] args, string rawArgs)
++    {
++		if (args.Length != 1)
++		{
++			return false;
++		}
++		if (!GeneralUtils.TryParseInt(args[0], out var intVal))
++		{
++			return false;
++		}
++
++		return AccessibleRewardsTrackTestingUtils.SetScenario(intVal);
++    }
++
++    private bool OnProcessCheat_hsatriggerrerollquestresponse(string func, string[] args, string rawArgs)
++    {
++		AccessibleQuestsTestingUtils.ReceiveRerollQuestResponseMessage();
++		return true;
++    }
++
++    private bool OnProcessCheat_hsatriggertrackrewardclaimedresponse(string func, string[] args, string rawArgs)
++    {
++		return AccessibleRewardsTrackTestingUtils.TriggerClaimedRewardResponse();
++    }
++
++    private bool OnProcessCheat_hsatriggertrackrewardackdresponse(string func, string[] args, string rawArgs)
++    {
++		return AccessibleRewardsTrackTestingUtils.TriggerAckdRewardResponse();
 +    }
 +
 +    private bool OnProcessCheat_hsashowreturningplayerbanner(string func, string[] args, string rawArgs)
@@ -24428,25 +25998,7 @@ index 09ac2b3..804f72a 100644
 +			return false;
 +		}
 +
-+		AccessibleRankedUtils.Cheat_SetWildOverride(boolVal);
 +		CollectionManager.Cheat_SetWildOverride(boolVal);
-+
-+		return true;
-+    }
-+
-+    private bool OnProcessCheat_hsasetclassic(string func, string[] args, string rawArgs)
-+    {
-+		if (args.Length != 1)
-+		{
-+			return false;
-+		}
-+		if (!GeneralUtils.TryParseBool(args[0], out var boolVal))
-+		{
-+			return false;
-+		}
-+
-+		AccessibleRankedUtils.Cheat_SetClassicOverride(boolVal);
-+		CollectionManager.Cheat_SetClassicOverride(boolVal);
 +
 +		return true;
 +    }
@@ -24454,10 +26006,8 @@ index 09ac2b3..804f72a 100644
 +    private bool OnProcessCheat_hsaresetpvpoverrides(string func, string[] args, string rawArgs)
 +    {
 +		AccessibilityUtils.Cheat_SetPvPOverride(false);
-+		AccessibleRankedUtils.Cheat_SetWildOverride(false);
-+		AccessibleRankedUtils.Cheat_SetClassicOverride(false);
 +		CollectionManager.Cheat_SetWildOverride(false);
-+		CollectionManager.Cheat_SetClassicOverride(false);
++		CollectionManager.Cheat_ResetNumDecks();
 +
 +		return true;
 +    }
@@ -24486,10 +26036,46 @@ index 09ac2b3..804f72a 100644
 +				break;
 +			default:
 +				UIStatus.Get().AddInfo("please enter a valid value for 1st parameter <format type>");
-+				return true;
++				return false;
 +		}
 +
 +		Options.SetFormatType(formatType);
++
++		return true;
++	}
++
++	private bool OnProcessCheat_hsasetnumdecks(string func, string[] args, string rawArgs)
++	{
++		if (args.Length != 3)
++		{
++			return false;
++		}
++		if (!GeneralUtils.TryParseInt(args[0], out var numStandardDecks))
++		{
++			UIStatus.Get().AddInfo("please enter a valid value for 2nd parameter <num standard decks>");
++			return false;
++		}
++
++		if (!GeneralUtils.TryParseInt(args[1], out var numWildDecks))
++		{
++			UIStatus.Get().AddInfo("please enter a valid value for 3rd parameter <num wild decks>");
++			return false;
++		}
++
++		if (!GeneralUtils.TryParseInt(args[2], out var numClassicDecks))
++		{
++			UIStatus.Get().AddInfo("please enter a valid value for 4th parameter <num classic decks>");
++			return false;
++		}
++
++		CollectionManager.Cheat_SetNumDecks(numStandardDecks, numWildDecks, numClassicDecks);
++
++		return true;
++	}
++
++	private bool OnProcessCheat_hsaresetnumdecks(string func, string[] args, string rawArgs)
++	{
++		CollectionManager.Cheat_ResetNumDecks();
 +
 +		return true;
 +	}
@@ -24896,7 +26482,7 @@ index 9c7ef7e..470de7a 100644
 +    #endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/CollectionManager.cs b/Decompiled/Assembly-CSharp/CollectionManager.cs
-index 4980a3a..4648227 100644
+index 4980a3a..9669a57 100644
 --- a/Decompiled/Assembly-CSharp/CollectionManager.cs
 +++ b/Decompiled/Assembly-CSharp/CollectionManager.cs
 @@ -394,8 +394,12 @@ public class CollectionManager
@@ -24944,7 +26530,7 @@ index 4980a3a..4648227 100644
  		if (m_lastSearchForWildCardsTime > m_collectionLastModifiedTime)
  		{
  			return m_accountHasWildCards;
-@@ -2593,6 +2608,22 @@ public class CollectionManager
+@@ -2593,18 +2608,49 @@ public class CollectionManager
  		return m_accountHasWildCards;
  	}
  
@@ -24966,8 +26552,35 @@ index 4980a3a..4648227 100644
 +
  	public int GetNumberOfWildDecks()
  	{
++		if (s_cheatFakingNumDecks)
++		{
++			return s_cheatNumWildDecks;
++		}
++
  		return m_decks.Values.Count((CollectionDeck deck) => deck.FormatType == FormatType.FT_WILD);
-@@ -3208,6 +3239,9 @@ public class CollectionManager
+ 	}
+ 
+ 	public int GetNumberOfStandardDecks()
+ 	{
++		if (s_cheatFakingNumDecks)
++		{
++			return s_cheatNumStandardDecks;
++		}
++
+ 		return m_decks.Values.Count((CollectionDeck deck) => deck.FormatType == FormatType.FT_STANDARD);
+ 	}
+ 
+ 	public int GetNumberOfClassicDecks()
+ 	{
++		if (s_cheatFakingNumDecks)
++		{
++			return s_cheatNumClassicDecks;
++		}
++
+ 		return m_decks.Values.Count((CollectionDeck deck) => deck.FormatType == FormatType.FT_CLASSIC);
+ 	}
+ 
+@@ -3208,6 +3254,9 @@ public class CollectionManager
  
  	public bool ShouldShowWildToStandardTutorial(bool checkPrevSceneIsPlayMode = true)
  	{
@@ -24977,7 +26590,7 @@ index 4980a3a..4648227 100644
  		if (!ShouldAccountSeeStandardWild())
  		{
  			return false;
-@@ -5388,4 +5422,52 @@ public class CollectionManager
+@@ -5388,4 +5437,57 @@ public class CollectionManager
  			Log.CollectionManager.PrintError($"CollectionManager_Lettuce.GenerateEquipmentUnlockTask(): Equipment [{equipment.ID},{equipment.m_abilityName}] no unlock info found!");
  		}
  	}
@@ -24991,22 +26604,12 @@ index 4980a3a..4648227 100644
 +
 +	public bool AccountCanSeeWild()
 +	{
-+		if (s_cheatUnlockedWild)
-+		{
-+			return true;
-+		}
-+
 +		// ShouldAccountSeeStandardWild blocks if we're in apprentice as well
-+		return ShouldAccountSeeStandardWild() && AccountHasWildCards();
++		return ShouldAccountSeeStandardWild();
 +	}
 +
 +	public bool AccountCanSeeClassic()
 +	{
-+		if (s_cheatUnlockedClassic)
-+		{
-+			return true;
-+		}
-+
 +		// ShouldAccountSeeStandardWild blocks if we're in apprentice as well
 +		return ShouldAccountSeeStandardWild() && AccountHasClassicCards();
 +	}
@@ -25014,16 +26617,31 @@ index 4980a3a..4648227 100644
 +	#region Accessibility Testing
 +	private static bool s_cheatUnlockedWild;
 +
-+	private static bool s_cheatUnlockedClassic;
++	private static bool s_cheatFakingNumDecks;
++
++	private static int s_cheatNumStandardDecks;
++	private static int s_cheatNumWildDecks;
++	private static int s_cheatNumClassicDecks;
 +
 +	internal static void Cheat_SetWildOverride(bool val)
 +	{
 +		s_cheatUnlockedWild = val;
 +	}
 +
-+	internal static void Cheat_SetClassicOverride(bool val)
++	internal static void Cheat_SetNumDecks(int numStandardDecks, int numWildDecks, int numClassicDecks)
 +	{
-+		s_cheatUnlockedClassic = val;
++		s_cheatFakingNumDecks = true;
++		s_cheatNumStandardDecks = numStandardDecks;
++		s_cheatNumWildDecks = numWildDecks;
++		s_cheatNumClassicDecks = numClassicDecks;
++	}
++
++	internal static void Cheat_ResetNumDecks()
++	{
++		s_cheatNumStandardDecks = 0;
++		s_cheatNumWildDecks = 0;
++		s_cheatNumClassicDecks = 0;
++		s_cheatFakingNumDecks = false;
 +	}
 +
 +	#endregion
@@ -29524,8 +31142,335 @@ index a374db0..4a5dac0 100644
  			}, null, callImmediatelyIfSet: true, doOnce: true);
  		}
  	}
+diff --git a/Decompiled/Assembly-CSharp/Hearthstone/Progression/PlayerState.cs b/Decompiled/Assembly-CSharp/Hearthstone/Progression/PlayerState.cs
+index 74383c4..e27ffc3 100644
+--- a/Decompiled/Assembly-CSharp/Hearthstone/Progression/PlayerState.cs
++++ b/Decompiled/Assembly-CSharp/Hearthstone/Progression/PlayerState.cs
+@@ -10,6 +10,8 @@ namespace Hearthstone.Progression
+ 
+ 		private readonly Func<int, T> m_defaultProvider;
+ 
++		private Map<int, T> m_cheatState;
++
+ 		public event Action<T, T> OnStateChanged = delegate
+ 		{
+ 		};
+@@ -21,6 +23,11 @@ namespace Hearthstone.Progression
+ 
+ 		public T GetState(int id)
+ 		{
++			if (m_cheatState != null)
++			{
++				return m_cheatState[id];
++			}
++
+ 			if (!m_playerState.TryGetValue(id, out var value))
+ 			{
+ 				Func<int, T> defaultProvider = m_defaultProvider;
+@@ -36,23 +43,53 @@ namespace Hearthstone.Progression
+ 		public void UpdateState(int id, T newState)
+ 		{
+ 			T state = GetState(id);
+-			m_playerState[id] = newState;
++
++			if (m_cheatState != null)
++			{
++				m_cheatState[id] = newState;
++			}
++			else
++			{
++				m_playerState[id] = newState;
++			}
+ 			this.OnStateChanged(state, newState);
+ 		}
+ 
+ 		public void Reset()
+ 		{
+-			m_playerState.Clear();
++			if (m_cheatState != null)
++			{
++				m_cheatState.Clear();
++			}
++			else
++			{
++				m_playerState.Clear();
++			}
+ 		}
+ 
+ 		IEnumerator<T> IEnumerable<T>.GetEnumerator()
+ 		{
++			if (m_cheatState != null)
++			{
++				return m_cheatState.Values.GetEnumerator();
++			}
+ 			return m_playerState.Values.GetEnumerator();
+ 		}
+ 
+ 		public IEnumerator GetEnumerator()
+ 		{
++			if (m_cheatState != null)
++			{
++				return m_cheatState.Values.GetEnumerator();
++			}
+ 			return m_playerState.Values.GetEnumerator();
+ 		}
++
++		#region Accessibility Testing
++		public void Cheat_SetCheatState(Map<int, T> cheatState)
++		{
++			m_cheatState = cheatState;
++		}
++		#endregion
+ 	}
+ }
+diff --git a/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestManager.cs b/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestManager.cs
+index a7f8605..4a5a032 100644
+--- a/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestManager.cs
++++ b/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestManager.cs
+@@ -2,6 +2,7 @@ using System;
+ using System.Collections.Generic;
+ using System.Linq;
+ using System.Text;
++using Accessibility;
+ using Assets;
+ using Blizzard.T5.Jobs;
+ using Blizzard.T5.Services;
+@@ -31,7 +32,8 @@ namespace Hearthstone.Progression
+ 		public enum QuestTileDisplayMode
+ 		{
+ 			DEFAULT,
+-			NEXT_QUEST_TIME
++			NEXT_QUEST_TIME,
++			EOE
+ 		}
+ 
+ 		public delegate void OnQuestRerolledHandler(int rerolledQuestId, int grantedQuestId, bool success);
+@@ -151,6 +153,11 @@ namespace Hearthstone.Progression
+ 
+ 		public QuestListDataModel CreateActiveQuestsDataModel(QuestPool.QuestPoolType questPoolType, bool appendTimeUntilNextQuest)
+ 		{
++			if (AccessibleQuestsTestingUtils.IsMockingQuests())
++			{
++				return AccessibleQuestsTestingUtils.GetQuestsForPoolType(questPoolType);
++			}
++
+ 			QuestListDataModel questListDataModel = new QuestListDataModel();
+ 			List<int> list2 = new List<int>();
+ 			if (questPoolType == QuestPool.QuestPoolType.NONE)
+@@ -242,6 +249,7 @@ namespace Hearthstone.Progression
+ 					return list;
+ 				})
+ 			};
++			//DebugQuestListDataModel(questListDataModel);
+ 			bool showIKS = m_showQuestPoolTypesFromLogin;
+ 			m_showQuestPoolTypesFromLogin = false;
+ 			Widget widget = WidgetInstance.Create(QUEST_NOTIFICATION_PREFAB);
+@@ -254,6 +262,36 @@ namespace Hearthstone.Progression
+ 			return true;
+ 		}
+ 
++		private void DebugQuestListDataModel(QuestListDataModel questListDataModel)
++		{
++			if (!HearthstoneAccessConstants.DEV_MODE)
++			{
++				return;
++			}
++			AccessibilityUtils.LogDebug("Debugging QuestListDataModel");
++			foreach (var quest in questListDataModel.Quests)
++			{
++				AccessibilityUtils.LogDebug("-");
++				AccessibilityUtils.LogDebug($"--- QuestId: {quest.QuestId}");
++				AccessibilityUtils.LogDebug($"--- PoolId: {quest.PoolId}");
++				AccessibilityUtils.LogDebug($"--- PoolType: {quest.PoolType}");
++				AccessibilityUtils.LogDebug($"--- DisplayMode: {quest.DisplayMode}");
++				AccessibilityUtils.LogDebug($"--- Name: {quest.Name}");
++				AccessibilityUtils.LogDebug($"--- Description: {quest.Description}");
++				AccessibilityUtils.LogDebug($"--- Icon: {quest.Icon}");
++				AccessibilityUtils.LogDebug($"--- Progress: {quest.Progress}");
++				AccessibilityUtils.LogDebug($"--- Quota: {quest.Quota}");
++				AccessibilityUtils.LogDebug($"--- RerollCount: {quest.RerollCount}");
++				AccessibilityUtils.LogDebug($"--- Rewards: {quest.Rewards}");
++				AccessibilityUtils.LogDebug($"--- RewardTrackXp: {quest.RewardTrackXp}");
++				AccessibilityUtils.LogDebug($"--- ProgressMessage: {quest.ProgressMessage}");
++				AccessibilityUtils.LogDebug($"--- Status: {quest.Status}");
++				AccessibilityUtils.LogDebug($"--- Abandonable: {quest.Abandonable}");
++				AccessibilityUtils.LogDebug($"--- NextInChain: {quest.NextInChain}");
++				AccessibilityUtils.LogDebug("-");
++			}
++		}
++
+ 		public bool AckQuest(int questId)
+ 		{
+ 			if (!m_questState.TryGetValue(questId, out var value))
+@@ -273,12 +311,21 @@ namespace Hearthstone.Progression
+ 				value.Status = 5;
+ 				break;
+ 			}
+-			Network.Get().AckQuest(questId);
++
++			if (!AccessibleQuestsTestingUtils.IsMockingQuests())
++			{
++				Network.Get().AckQuest(questId);
++			}
+ 			return false;
+ 		}
+ 
+ 		public bool RerollQuest(int questId)
+ 		{
++			if (AccessibleQuestsTestingUtils.IsMockingQuests())
++			{
++				return AccessibleQuestsTestingUtils.RerollQuest(questId);
++			}
++
+ 			if (!m_questState.TryGetValue(questId, out var value))
+ 			{
+ 				return false;
+@@ -302,6 +349,10 @@ namespace Hearthstone.Progression
+ 
+ 		public bool AbandonQuest(int questId)
+ 		{
++			if (AccessibleQuestsTestingUtils.IsMockingQuests())
++			{
++				return AccessibleQuestsTestingUtils.AbandonQuest(questId);
++			}
+ 			if (!m_questState.TryGetValue(questId, out var value))
+ 			{
+ 				return false;
+@@ -321,6 +372,11 @@ namespace Hearthstone.Progression
+ 
+ 		public bool CanBeGrantedPoolQuests()
+ 		{
++			if (AccessibleQuestsTestingUtils.IsMockingQuests())
++			{
++				return AccessibleQuestsTestingUtils.CanBeGrantedPoolQuests();
++			}
++
+ 			foreach (PlayerQuestState value in m_questState.Values)
+ 			{
+ 				if (value.QuestId >= 104 && value.QuestId <= 108 && IsQuestActive(value))
+@@ -335,7 +391,7 @@ namespace Hearthstone.Progression
+ 			return true;
+ 		}
+ 
+-		private QuestDataModel CreateQuestDataModel(PlayerQuestState questState)
++		internal QuestDataModel CreateQuestDataModel(PlayerQuestState questState)
+ 		{
+ 			QuestDbfRecord record = GameDbf.Quest.GetRecord(questState.QuestId);
+ 			if (record == null)
+@@ -370,12 +426,18 @@ namespace Hearthstone.Progression
+ 			};
+ 		}
+ 
+-		private QuestDataModel CreateNextQuestTimeDataModel(QuestPoolDbfRecord questPoolRecord)
++		internal QuestDataModel CreateNextQuestTimeDataModel(QuestPoolDbfRecord questPoolRecord)
++		{
++			var timeUntilNextQuestString = GetTimeUntilNextQuestString(questPoolRecord.ID);
++			return CreateNextQuestTimeDataModel(questPoolRecord, timeUntilNextQuestString);
++		}
++
++		internal QuestDataModel CreateNextQuestTimeDataModel(QuestPoolDbfRecord questPoolRecord, string timeUntilNextQuestString)
+ 		{
+ 			QuestDataModel questDataModel = new QuestDataModel();
+ 			questDataModel.DisplayMode = QuestTileDisplayMode.NEXT_QUEST_TIME;
+ 			questDataModel.PoolType = questPoolRecord.QuestPoolType;
+-			questDataModel.TimeUntilNextQuest = GameStrings.Format("GLOBAL_PROGRESSION_QUEST_TIME_UNTIL_NEXT", GetTimeUntilNextQuestString(questPoolRecord.ID));
++			questDataModel.TimeUntilNextQuest = GameStrings.Format("GLOBAL_PROGRESSION_QUEST_TIME_UNTIL_NEXT", timeUntilNextQuestString);
+ 			return questDataModel;
+ 		}
+ 
+@@ -409,9 +471,19 @@ namespace Hearthstone.Progression
+ 			}
+ 		}
+ 
+-		private void ReceivePlayerQuestStateUpdateMessage()
++		internal void ReceivePlayerQuestStateUpdateMessage()
+ 		{
+-			PlayerQuestStateUpdate playerQuestStateUpdate = Network.Get().GetPlayerQuestStateUpdate();
++			PlayerQuestStateUpdate playerQuestStateUpdate;
++
++			if (AccessibleQuestsTestingUtils.IsMockingQuests())
++			{
++				playerQuestStateUpdate = AccessibleQuestsTestingUtils.GetPlayerQuestStateUpdate();
++			}
++			else
++			{
++				playerQuestStateUpdate = Network.Get().GetPlayerQuestStateUpdate();
++			}
++
+ 			if (playerQuestStateUpdate == null)
+ 			{
+ 				return;
+@@ -477,9 +549,19 @@ namespace Hearthstone.Progression
+ 			}
+ 		}
+ 
+-		private void ReceivePlayerQuestPoolStateUpdateMessage()
++		internal void ReceivePlayerQuestPoolStateUpdateMessage()
+ 		{
+-			PlayerQuestPoolStateUpdate playerQuestPoolStateUpdate = Network.Get().GetPlayerQuestPoolStateUpdate();
++			PlayerQuestPoolStateUpdate playerQuestPoolStateUpdate;
++
++			if (AccessibleQuestsTestingUtils.IsMockingQuests())
++			{
++				playerQuestPoolStateUpdate = AccessibleQuestsTestingUtils.GetPlayerQuestPoolStateUpdate();
++			}
++			else
++			{
++				playerQuestPoolStateUpdate = Network.Get().GetPlayerQuestPoolStateUpdate();
++			}
++
+ 			if (playerQuestPoolStateUpdate == null)
+ 			{
+ 				return;
+@@ -495,9 +577,19 @@ namespace Hearthstone.Progression
+ 			ScheduleCheckForNewQuests();
+ 		}
+ 
+-		private void ReceiveRerollQuestResponseMessage()
++		internal void ReceiveRerollQuestResponseMessage()
+ 		{
+-			RerollQuestResponse rerollQuestResponse = Network.Get().GetRerollQuestResponse();
++			RerollQuestResponse rerollQuestResponse;
++
++			if (AccessibleQuestsTestingUtils.IsMockingQuests())
++			{
++				rerollQuestResponse = AccessibleQuestsTestingUtils.GetRerollQuestResponse();
++			}
++			else
++			{
++				rerollQuestResponse = Network.Get().GetRerollQuestResponse();
++			}
++
+ 			if (rerollQuestResponse != null && GameDbf.Quest.GetRecord(rerollQuestResponse.RerolledQuestId) != null)
+ 			{
+ 				this.OnQuestRerolled?.Invoke(rerollQuestResponse.RerolledQuestId, rerollQuestResponse.GrantedQuestId, rerollQuestResponse.Success);
+@@ -542,6 +634,12 @@ namespace Hearthstone.Progression
+ 			{
+ 				return "";
+ 			}
++
++			return GetElapsedTimeString(timeSpan);
++		}
++
++		internal string GetElapsedTimeString(TimeSpan timeSpan)
++		{
+ 			return TimeUtils.GetElapsedTimeString((long)timeSpan.TotalSeconds, TimeUtils.SPLASHSCREEN_DATETIME_STRINGSET, roundUp: true);
+ 		}
+ 
+@@ -595,7 +693,10 @@ namespace Hearthstone.Progression
+ 			{
+ 				if (!GameMgr.Get().IsFindingGame())
+ 				{
+-					Network.Get().CheckForNewQuests();
++					if (!AccessibleQuestsTestingUtils.IsMockingQuests())
++					{
++						Network.Get().CheckForNewQuests();
++					}
+ 				}
+ 				ScheduleCheckForNewQuests();
+ 			}
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestNotificationPopup.cs b/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestNotificationPopup.cs
-index 72389a8..746bfe1 100644
+index 72389a8..ded13e8 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestNotificationPopup.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestNotificationPopup.cs
 @@ -4,11 +4,13 @@ using Assets;
@@ -29572,33 +31517,37 @@ index 72389a8..746bfe1 100644
  			m_callback?.Invoke();
  			if (m_IKSShown)
  			{
-@@ -52,6 +62,7 @@ namespace Hearthstone.Progression
+@@ -52,6 +62,9 @@ namespace Hearthstone.Progression
  
  		public void Initialize(RewardTrackDataModel rewardTrackDataModel, QuestListDataModel questListDataModel, Action callback, bool showIKS)
  		{
++			questListDataModel = OverrideQuestsIfNecessary(questListDataModel);
++
 +			m_questListDataModel = questListDataModel;
  			m_callback = callback;
  			m_shouldShowIKS = showIKS;
  			if (rewardTrackDataModel != null)
-@@ -60,6 +71,17 @@ namespace Hearthstone.Progression
+@@ -60,6 +73,19 @@ namespace Hearthstone.Progression
  			}
  			if (questListDataModel != null)
  			{
 +				// Accessiblity getting the pool type
-+				foreach(var quest in questListDataModel.Quests)
-+                {
-+					if (m_questPoolType != null && quest.PoolType != m_questPoolType)
-+                    {
++				for (int i = 0; i < questListDataModel.Quests.Count; i++)
++				{
++					var quest = questListDataModel.Quests[i];
++
++					if (i > 0 && m_questPoolType != quest.PoolType)
++					{
 +						m_questPoolType = QuestPool.QuestPoolType.NONE;
 +						break;
-+                    }
++					}
 +					m_questPoolType = quest.PoolType;
-+                }
++				}
 +
  				m_widget.BindDataModel(new QuestListDataModel
  				{
  					Quests = questListDataModel.Quests.Take(m_maxQuestsPerRow).Aggregate(new DataModelList<QuestDataModel>(), delegate(DataModelList<QuestDataModel> acc, QuestDataModel dataModel)
-@@ -85,10 +107,14 @@ namespace Hearthstone.Progression
+@@ -85,10 +111,14 @@ namespace Hearthstone.Progression
  				}
  				m_widget.TriggerEvent("SHOW");
  			}, null, callImmediatelyIfSet: true, doOnce: true);
@@ -29613,11 +31562,10 @@ index 72389a8..746bfe1 100644
  			AckQuests();
  			SceneMgr.Get().UnregisterScenePreLoadEvent(OnPreLoadNextScene);
  			FatalErrorMgr.Get().RemoveErrorListener(OnFatalError);
-@@ -145,5 +171,48 @@ namespace Hearthstone.Progression
+@@ -145,5 +175,69 @@ namespace Hearthstone.Progression
  		{
  			Hide();
  		}
--	}
 +
 +        #region Accessibility
 +
@@ -29653,15 +31601,36 @@ index 72389a8..746bfe1 100644
 +            }
 +
 +			m_accessibleQuests = new AccessibleListOfItems<AccessibleQuest>(this, accessibleQuests);
-+			int numQuests = accessibleQuests.Count;
 +
-+			AccessibilityMgr.Output(this, LocalizationUtils.Format(LocalizationKey.UI_QUEST_NOTIFICATION_POPUP_TITLE, numQuests));
++			if (m_questPoolType == QuestPool.QuestPoolType.WEEKLY)
++			{
++				AccessibilityMgr.Output(this, GameStrings.Get("GLOBAL_PROGRESSION_WEEKLY_QUESTS_POPUP_TITLE"));
++			}
++			else
++			{
++				AccessibilityMgr.Output(this, GameStrings.Get("GLOBAL_PROGRESSION_DAILY_QUESTS_POPUP_TITLE"));
++			}
 +
-+            m_accessibleQuests.StartReading();
++			m_accessibleQuests.StartReading();
 +        }
 +
-+        #endregion
-+    }
++		#region Accessibility Testing
++		private QuestListDataModel OverrideQuestsIfNecessary(QuestListDataModel original)
++		{
++			var testingModel = AccessibleQuestsTestingUtils.GetQuests();
++
++			if (testingModel == null)
++			{
++				return original;
++			}
++
++			return testingModel;
++		}
++
++		#endregion
++
++		#endregion
+ 	}
  }
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestProgressToast.cs b/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestProgressToast.cs
 index 24cda7e..d39e39f 100644
@@ -29733,10 +31702,18 @@ index 24cda7e..d39e39f 100644
  	}
  }
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestTile.cs b/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestTile.cs
-index a3bc8d0..d8b3021 100644
+index a3bc8d0..c391e63 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestTile.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/Progression/QuestTile.cs
-@@ -57,7 +57,7 @@ namespace Hearthstone.Progression
+@@ -1,6 +1,7 @@
+ using Hearthstone.DataModels;
+ using Hearthstone.UI;
+ using UnityEngine;
++using Accessibility;
+ 
+ namespace Hearthstone.Progression
+ {
+@@ -57,7 +58,7 @@ namespace Hearthstone.Progression
  
  		private void RerollQuest()
  		{
@@ -29745,7 +31722,7 @@ index a3bc8d0..d8b3021 100644
  			if (dataModel != null && !m_isRerollPending)
  			{
  				if (!Network.IsLoggedIn())
-@@ -75,7 +75,7 @@ namespace Hearthstone.Progression
+@@ -75,7 +76,7 @@ namespace Hearthstone.Progression
  
  		private void AbandonQuest()
  		{
@@ -29754,7 +31731,20 @@ index a3bc8d0..d8b3021 100644
  			if (dataModel != null)
  			{
  				if (!Network.IsLoggedIn())
-@@ -111,7 +111,7 @@ namespace Hearthstone.Progression
+@@ -103,15 +104,20 @@ namespace Hearthstone.Progression
+ 				{
+ 					m_widget.TriggerEvent("CODE_REROLLED");
+ 					m_isRerollAnimPlaying = true;
++					AccessibleJournal.Get().OnQuestAbandoned(this);
+ 				}
+ 			}
++			else
++			{
++				AccessibleJournal.Get().OnQuestAbandonCancel();
++			}
+ 		}
+ 
+ 		private void OnQuestRerolled(int rerolledQuestId, int grantedQuestId, bool success)
  		{
  			if (m_isRerollPending)
  			{
@@ -29763,7 +31753,7 @@ index a3bc8d0..d8b3021 100644
  				if (dataModel != null && dataModel.QuestId == rerolledQuestId)
  				{
  					m_isRerollPending = false;
-@@ -124,7 +124,7 @@ namespace Hearthstone.Progression
+@@ -124,7 +130,7 @@ namespace Hearthstone.Progression
  
  		private void OnQuestRerollCountChanged(int questPoolId, int rerollCount)
  		{
@@ -29772,7 +31762,15 @@ index a3bc8d0..d8b3021 100644
  			if (dataModel != null && dataModel.PoolId == questPoolId)
  			{
  				dataModel.RerollCount = rerollCount;
-@@ -159,7 +159,17 @@ namespace Hearthstone.Progression
+@@ -150,6 +156,7 @@ namespace Hearthstone.Progression
+ 				{
+ 					m_widget.TriggerEvent("CODE_GRANTED_BY_REROLL");
+ 				}, null, callImmediatelyIfSet: true, doOnce: true);
++				AccessibleJournal.Get().OnQuestRerolled(this);
+ 			}
+ 			else
+ 			{
+@@ -159,7 +166,17 @@ namespace Hearthstone.Progression
  
  		private void UpdateQuestDataModelByQuestId(int questId)
  		{
@@ -29877,7 +31875,7 @@ index 05449f6..270bfaa 100644
  			{
  				m_isIntro = false;
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/Progression/RewardScroll.cs b/Decompiled/Assembly-CSharp/Hearthstone/Progression/RewardScroll.cs
-index e5c4896..486c97e 100644
+index e5c4896..ed08ce3 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/Progression/RewardScroll.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/Progression/RewardScroll.cs
 @@ -2,11 +2,13 @@ using System;
@@ -29951,8 +31949,23 @@ index e5c4896..486c97e 100644
  			if (SceneMgr.Get().GetMode() != SceneMgr.Mode.GAMEPLAY)
  			{
  				UIContext.GetRoot().DismissPopup(base.gameObject);
-@@ -94,5 +107,80 @@ namespace Hearthstone.Progression
- 				widget.GetComponentInChildren<RewardScroll>().Show();
+@@ -84,15 +97,88 @@ namespace Hearthstone.Progression
+ 
+ 		public static void DebugShowFake(RewardScrollDataModel dataModel)
+ 		{
+-			Widget widget = WidgetInstance.Create(RewardPresenter.REWARD_PREFAB);
+-			widget.RegisterReadyListener(delegate
+-			{
+-				widget.GetComponentInChildren<RewardScroll>().Initialize(dataModel);
+-			});
+-			widget.RegisterDoneChangingStatesListener(delegate
++			Widget rewardWidget = WidgetInstance.Create(RewardPresenter.REWARD_PREFAB);
++			rewardWidget.RegisterDoneChangingStatesListener(delegate
+ 			{
+-				widget.GetComponentInChildren<RewardScroll>().Show();
++				RewardScroll componentInChildren = rewardWidget.GetComponentInChildren<RewardScroll>();
++				componentInChildren.Initialize(dataModel);
++				componentInChildren.Show();
  			}, null, callImmediatelyIfSet: true, doOnce: true);
  		}
 +
@@ -30219,6 +32232,119 @@ index 39aefa2..c5525ea 100644
  using Hearthstone.DataModels;
  using Hearthstone.UI;
  using PegasusUtil;
+diff --git a/Decompiled/Assembly-CSharp/Hearthstone/Progression/RewardTrackManager.cs b/Decompiled/Assembly-CSharp/Hearthstone/Progression/RewardTrackManager.cs
+index bb813c5..f0ab16d 100644
+--- a/Decompiled/Assembly-CSharp/Hearthstone/Progression/RewardTrackManager.cs
++++ b/Decompiled/Assembly-CSharp/Hearthstone/Progression/RewardTrackManager.cs
+@@ -2,6 +2,7 @@ using System;
+ using System.Collections.Generic;
+ using System.Linq;
+ using System.Text;
++using Accessibility;
+ using Assets;
+ using Blizzard.T5.Jobs;
+ using Blizzard.T5.Services;
+@@ -136,6 +137,12 @@ namespace Hearthstone.Progression
+ 
+ 		public bool ClaimRewardTrackReward(int rewardTrackId, int level, bool forPaidTrack, int chooseOneRewardItemId = 0)
+ 		{
++			if (AccessibleRewardsTrackTestingUtils.IsMockingRewardsTrack())
++			{
++				m_pendingRewardClaimRequests[(rewardTrackId, level, forPaidTrack)] = chooseOneRewardItemId;
++				return AccessibleRewardsTrackTestingUtils.ClaimRewardTrackReward(rewardTrackId, level, forPaidTrack, chooseOneRewardItemId);
++			}
++
+ 			if (rewardTrackId == TrackDataModel.RewardTrackId)
+ 			{
+ 				if (!RewardExistsAtLevel(level, forPaidTrack))
+@@ -160,12 +167,20 @@ namespace Hearthstone.Progression
+ 				return false;
+ 			}
+ 			m_pendingRewardClaimRequests[(rewardTrackId, level, forPaidTrack)] = chooseOneRewardItemId;
++
+ 			Network.Get().ClaimRewardTrackReward(rewardTrackId, level, forPaidTrack, chooseOneRewardItemId);
++
+ 			return true;
+ 		}
+ 
+ 		public bool AckRewardTrackReward(int rewardTrackId, int level, bool forPaidTrack)
+ 		{
++			if (AccessibleRewardsTrackTestingUtils.IsMockingRewardsTrack())
++			{
++				AccessibleJournal.Get().OnTrackRewardAckd(rewardTrackId, level, forPaidTrack);
++				return true;
++			}
++
+ 			if (TrackDataModel.RewardTrackId == rewardTrackId)
+ 			{
+ 				if (!RewardExistsAtLevel(level, forPaidTrack))
+@@ -191,13 +206,14 @@ namespace Hearthstone.Progression
+ 				}
+ 			}
+ 			Network.Get().AckRewardTrackReward(rewardTrackId, level, forPaidTrack);
++			AccessibleJournal.Get().OnTrackRewardAckd(rewardTrackId, level, forPaidTrack);
+ 			return true;
+ 		}
+ 
+ 		public bool HasUnclaimedRewardsForLevel(RewardTrackLevelDbfRecord record)
+ 		{
+-			PlayerRewardTrackLevelState state = m_rewardTrackLevelState.GetState(record.Level);
+-			bool premiumRewardsUnlocked = TrackDataModel.PremiumRewardsUnlocked;
++			PlayerRewardTrackLevelState state = GetPlayerRewardTrackLevelState(record.Level);
++			bool premiumRewardsUnlocked = ArePremiumRewardsUnlocked();
+ 			RewardListDbfRecord freeRewardListRecord = record.FreeRewardListRecord;
+ 			bool flag = freeRewardListRecord != null && freeRewardListRecord.RewardItems?.Count > 0;
+ 			int num;
+@@ -367,7 +383,7 @@ namespace Hearthstone.Progression
+ 			}
+ 		}
+ 
+-		private void HandleRewardTrackStateUpdate(PlayerRewardTrackState stateUpdate)
++		internal void HandleRewardTrackStateUpdate(PlayerRewardTrackState stateUpdate)
+ 		{
+ 			if (stateUpdate.HasIsActiveRewardTrack && !stateUpdate.IsActiveRewardTrack)
+ 			{
+@@ -482,6 +498,12 @@ namespace Hearthstone.Progression
+ 			case RewardStatus.RESET:
+ 				break;
+ 			}
++
++			// Outside the switch as that would be dangerous
++			if (status == RewardStatus.ACKED)
++			{
++				AccessibleJournal.Get().OnTrackRewardAckd(rewardTrackId, level, forPaidTrack);
++			}
+ 		}
+ 
+ 		private void OnRewardTrackUnclaimedNotification()
+@@ -588,5 +610,27 @@ namespace Hearthstone.Progression
+ 			}
+ 			return "n/a";
+ 		}
++
++		#region Accessibility
++		public PlayerRewardTrackLevelState GetPlayerRewardTrackLevelState(int level)
++		{
++			return m_rewardTrackLevelState.GetState(level);
++		}
++
++		public bool ArePremiumRewardsUnlocked()
++		{
++			if (AccessibleRewardsTrackTestingUtils.IsMockingRewardsTrack())
++			{
++				return AccessibleRewardsTrackTestingUtils.ArePremiumRewardsUnlocked();
++			}
++			return TrackDataModel.PremiumRewardsUnlocked;
++		}
++
++		internal void Cheat_SetPlayerRewardTrackLevelState(Map<int, PlayerRewardTrackLevelState> state)
++		{
++			m_rewardTrackLevelState.Cheat_SetCheatState(state);
++		}
++
++		#endregion
+ 	}
+ }
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/UI/Clickable.cs b/Decompiled/Assembly-CSharp/Hearthstone/UI/Clickable.cs
 index 8542bea..ae36e0b 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/UI/Clickable.cs
@@ -31349,6 +33475,174 @@ index fee9346..0fc7f07 100644
  		{
  			HideHelpPopups();
  			m_helpPopupType = Option.HAS_SEEN_MERC_APPEARANCE_TUTORIAL;
+diff --git a/Decompiled/Assembly-CSharp/MiniSetProductPage.cs b/Decompiled/Assembly-CSharp/MiniSetProductPage.cs
+index 7338409..e53950c 100644
+--- a/Decompiled/Assembly-CSharp/MiniSetProductPage.cs
++++ b/Decompiled/Assembly-CSharp/MiniSetProductPage.cs
+@@ -1,6 +1,9 @@
+ using System.Linq;
+ using Blizzard.T5.AssetManager;
+ using UnityEngine;
++using Accessibility;
++using System.Collections.Generic;
++using Hearthstone.DataModels;
+ 
+ public class MiniSetProductPage : ProductPage
+ {
+@@ -41,4 +44,153 @@ public class MiniSetProductPage : ProductPage
+ 			SetMusicOverride(assetHandle.Asset.GetComponent<StorePackDef>().GetMiniSetPlaylist());
+ 		}
+ 	}
++
++	#region Accessibility
++
++	private enum State
++	{
++		LOADING,
++		MENU,
++		READING_DESCRIPTION,
++		READING_CARDS,
++	}
++
++	private State m_curState;
++
++	private AccessibleMenu m_accessibleMenu;
++
++	private AccessibleMultilineText m_productDescription;
++
++	private AccessibleListOfItems<AccessibleCollectibleCard> m_accessibleCards;
++
++	public override void ReadProductPage()
++	{
++		var product = m_container.Product;
++		var availableVariants = AccessibleShopUtils.GetVariantsWhichCanBeBoughtWithGold(product);
++
++		if (availableVariants.Count == 0)
++		{
++			return;
++		}
++
++		var productName = product.Name;
++
++		m_accessibleMenu = new AccessibleMenu(m_container, productName, m_container.Close);
++
++		var goldCost = AccessibleShopUtils.GetGoldCost(product);
++		var buyText = LocalizationUtils.Format(LocalizationKey.UI_SHOP_ITEM_BUY_FOR_N_GOLD, goldCost);
++
++		m_accessibleMenu.AddOption(LocalizationUtils.Get(LocalizationKey.UI_SHOP_ITEM_READ_DESCRIPTION), () => ReadProductDescription(product));
++		m_accessibleMenu.AddOption(LocalizationUtils.Get(LocalizationKey.UI_SHOP_READ_CARDS), () => ReadCards());
++		m_accessibleMenu.AddOption(buyText, () => BuyVariant(product));
++
++		ReadAccessibleMenu();
++	}
++
++	private void ReadProductDescription(ProductDataModel product)
++	{
++		var descriptionLines = AccessibleShopUtils.CreateMultilineDescriptionForVariant(product);
++
++		m_productDescription = new AccessibleMultilineText(m_container, descriptionLines);
++		m_productDescription.ReadAllLines();
++		m_curState = State.READING_DESCRIPTION;
++	}
++
++	private void ReadAccessibleMenu()
++	{
++		m_accessibleMenu.StartReading();
++		m_curState = State.MENU;
++	}
++
++	private void ReadCards()
++	{
++		var cardTiles = m_cardList.m_dataModel.CardTiles;
++
++		var accessibleCards = new List<AccessibleCollectibleCard>(cardTiles.Count);
++
++		foreach (var card in cardTiles)
++        {
++			var cardId = card.CardId;
++			var cardQty = card.Count;
++			var entityDef = DefLoader.Get().GetEntityDef(cardId);
++			var cardRecord = GameUtils.GetCardRecord(cardId);
++			var collectibleCard = new CollectibleCard(cardRecord, entityDef, TAG_PREMIUM.NORMAL);
++			collectibleCard.OwnedCount = cardQty;
++			var accessibleCollectibleCard = new AccessibleCollectibleCard(m_container, collectibleCard, true, true);
++
++			accessibleCards.Add(accessibleCollectibleCard);
++        }
++
++		m_accessibleCards = new AccessibleListOfItems<AccessibleCollectibleCard>(m_container, accessibleCards);
++		m_accessibleCards.StartReading();
++		m_curState = State.READING_CARDS;
++	}
++
++	internal override void OnStorePurchaseAuthClosed(bool purchaseSuccess)
++	{
++		if (purchaseSuccess)
++		{
++			ReadRemainingGold();
++		}
++
++		if (m_curState == State.MENU)
++		{
++			ReadAccessibleMenu();
++		}
++	}
++
++	public override void HandleAccessibleInput()
++	{
++		if (m_curState == State.MENU)
++		{
++			m_accessibleMenu?.HandleAccessibleInput();
++		}
++		else if (m_curState == State.READING_CARDS)
++		{
++			if (AccessibleKey.BACK.IsPressed())
++			{
++				ReadAccessibleMenu();
++			}
++			else
++			{
++				var curTile = m_scrollbar.m_scrollableItems[m_accessibleCards.GetItemBeingReadIndex()];
++				if (m_accessibleCards.HandleAccessibleInput())
++				{
++					AccessibilityUtils.CenterScrollbarAroundObject(m_scrollbar, curTile.gameObject);
++				}
++				AccessibleInputMgr.MoveMouseTo(curTile);
++			}
++		}
++		else if (m_curState == State.READING_DESCRIPTION)
++		{
++			if (AccessibleKey.BACK.IsPressed())
++			{
++				ReadAccessibleMenu();
++			}
++			else
++			{
++				m_productDescription?.HandleAccessibleInput();
++			}
++		}
++	}
++
++	public override string GetAccessibleHelp()
++	{
++		if (m_curState == State.MENU)
++		{
++			return m_accessibleMenu?.GetHelp();
++		}
++		else if (m_curState == State.READING_CARDS)
++		{
++			return LocalizationUtils.Get(LocalizationKey.UI_SHOP_READ_CARDS_HELP);
++		}
++		else if (m_curState == State.READING_DESCRIPTION)
++		{
++			return AccessibleSpeech.PRESS_BACK_TO_GO_BACK;
++		}
++
++		return "";
++	}
++
++	#endregion
+ }
 diff --git a/Decompiled/Assembly-CSharp/MissionEntity.cs b/Decompiled/Assembly-CSharp/MissionEntity.cs
 index 25320d1..7da9dd2 100644
 --- a/Decompiled/Assembly-CSharp/MissionEntity.cs
@@ -31862,6 +34156,42 @@ index 5e11221..daab75b 100644
  	{
  		Type typeFromHandle = typeof(T);
  		m_netCache[typeFromHandle] = null;
+diff --git a/Decompiled/Assembly-CSharp/Network.cs b/Decompiled/Assembly-CSharp/Network.cs
+index fb5d094..bda867e 100644
+--- a/Decompiled/Assembly-CSharp/Network.cs
++++ b/Decompiled/Assembly-CSharp/Network.cs
+@@ -31,6 +31,7 @@ using Shared.Scripts.Game.Shop.Product;
+ using Shared.Scripts.Util.ValueTypes;
+ using SpectatorProto;
+ using UnityEngine;
++using Accessibility;
+ 
+ public class Network : IHasUpdate, IService
+ {
+@@ -6661,6 +6662,11 @@ public class Network : IHasUpdate, IService
+ 
+ 	public void PurchaseViaGold(int quantity, ProductType productItemType, int data)
+ 	{
++		if (HearthstoneAccessConstants.DEV_MODE)
++		{
++			return;
++		}
++
+ 		if (!IsLoggedIn())
+ 		{
+ 			Log.All.PrintError("Client attempted to make a gold purchase while offline!");
+@@ -6673,6 +6679,11 @@ public class Network : IHasUpdate, IService
+ 
+ 	public void GetPurchaseMethod(long? pmtProductId, int quantity, Currency currency)
+ 	{
++		if (HearthstoneAccessConstants.DEV_MODE)
++		{
++			return;
++		}
++
+ 		m_connectApi.RequestPurchaseMethod(pmtProductId, quantity, currency.toProto(), SystemInfo.deviceUniqueIdentifier, GetPlatformBuilder());
+ 	}
+ 
 diff --git a/Decompiled/Assembly-CSharp/NotificationManager.cs b/Decompiled/Assembly-CSharp/NotificationManager.cs
 index be8ef30..4314cc8 100644
 --- a/Decompiled/Assembly-CSharp/NotificationManager.cs
@@ -33479,6 +35809,23 @@ index 7dd5034..e6114ae 100644
  			practiceAIButton.ShowQuestBang(shown);
  			if (practiceAIButton == m_selectedPracticeAIButton)
  			{
+diff --git a/Decompiled/Assembly-CSharp/PresenceMgr.cs b/Decompiled/Assembly-CSharp/PresenceMgr.cs
+index 49c606c..2db469f 100644
+--- a/Decompiled/Assembly-CSharp/PresenceMgr.cs
++++ b/Decompiled/Assembly-CSharp/PresenceMgr.cs
+@@ -2613,6 +2613,12 @@ public class PresenceMgr
+ 
+ 	public string GetStatusText(BnetPlayer player)
+ 	{
++		if (player != null && player.IsCheatPlayer && "Nearby Player".Equals(player.GetBestName()))
++		{
++			// Default used to be "Hearthstone" but is now null since 21.4. Could just use the fake WoW player to test but this is fine
++			return "Doing something cool";
++		}
++
+ 		List<string> list = new List<string>();
+ 		string statusKey = null;
+ 		if (GetStatus_Internal(player, ref statusKey, list) == Global.PresenceStatus.UNKNOWN || !BnetPresenceMgr.Get().IsSubscribedToPlayer(player.GetHearthstoneGameAccountId()))
 diff --git a/Decompiled/Assembly-CSharp/PrivacyFeatures.cs b/Decompiled/Assembly-CSharp/PrivacyFeatures.cs
 index dbca850..25be7dc 100644
 --- a/Decompiled/Assembly-CSharp/PrivacyFeatures.cs
@@ -33593,6 +35940,166 @@ index 9726a07..6feb577 100644
  {
  	public delegate void ResponseCallback(bool confirmedPrivacyPolicy);
  
+diff --git a/Decompiled/Assembly-CSharp/ProductPage.cs b/Decompiled/Assembly-CSharp/ProductPage.cs
+index bbcf753..0ed07a0 100644
+--- a/Decompiled/Assembly-CSharp/ProductPage.cs
++++ b/Decompiled/Assembly-CSharp/ProductPage.cs
+@@ -5,6 +5,7 @@ using System.Linq;
+ using Hearthstone.DataModels;
+ using Hearthstone.UI;
+ using UnityEngine;
++using Accessibility;
+ 
+ public class ProductPage : MonoBehaviour
+ {
+@@ -525,4 +526,45 @@ public class ProductPage : MonoBehaviour
+ 			this.OnOpened();
+ 		}
+ 	}
++
++	#region Accessibility
++
++	protected void BuyVariant(ProductDataModel variant)
++	{
++		if (!AccessibleShopUtils.HasEnoughGoldToBuyVariant(variant))
++		{
++			AccessibilityMgr.Output(m_container, GameStrings.Get("GAMEPLAY_PlayErrors_REQ_ENOUGH_COIN"));
++		}
++		else
++		{
++			var priceOption = AccessibleShopUtils.GetGoldPriceOptionForVariant(variant);
++			TryBuy(priceOption);
++		}
++	}
++
++	public virtual void ReadProductPage()
++	{
++		// No-op
++	}
++
++	public virtual void HandleAccessibleInput()
++	{
++		// No-op
++	}
++
++	public virtual string GetAccessibleHelp()
++	{
++		return "";
++	}
++
++	internal virtual void OnStorePurchaseAuthClosed(bool purchaseSuccess)
++	{
++	}
++
++	protected void ReadRemainingGold()
++	{
++		AccessibleShopUtils.ReadRemainingGold(m_container);
++	}
++
++	#endregion
+ }
+diff --git a/Decompiled/Assembly-CSharp/ProductPageContainer.cs b/Decompiled/Assembly-CSharp/ProductPageContainer.cs
+index 6ac3bb3..aec66a5 100644
+--- a/Decompiled/Assembly-CSharp/ProductPageContainer.cs
++++ b/Decompiled/Assembly-CSharp/ProductPageContainer.cs
+@@ -6,8 +6,9 @@ using Hearthstone;
+ using Hearthstone.DataModels;
+ using Hearthstone.UI;
+ using UnityEngine;
++using Accessibility;
+ 
+-public class ProductPageContainer : MonoBehaviour
++public class ProductPageContainer : MonoBehaviour, AccessibleUI
+ {
+ 	[SerializeField]
+ 	private GameObject m_pageRoot;
+@@ -94,6 +95,8 @@ public class ProductPageContainer : MonoBehaviour
+ 			shop.OnOpened -= HandleShopOpened;
+ 			shop.OnCloseCompleted -= HandleShopClosed;
+ 		}
++
++		HideThis();
+ 	}
+ 
+ 	protected virtual void Update()
+@@ -123,12 +126,15 @@ public class ProductPageContainer : MonoBehaviour
+ 			m_pageRoot.SetActive(value: true);
+ 			IsOpen = true;
+ 			SetProduct(product, variant);
++			OnOpenProductPage();
+ 			StartCoroutine(OpenProductPageCoroutine());
+ 		}
+ 	}
+ 
+ 	public void Close()
+ 	{
++		HideThis();
++
+ 		if (!IsOpen)
+ 		{
+ 			return;
+@@ -240,6 +246,7 @@ public class ProductPageContainer : MonoBehaviour
+ 			Log.Store.PrintError("Previous product page did not close properly: {0}", m_currentProductPage.gameObject.name);
+ 		}
+ 		m_currentProductPage = page;
++		ReadProductPage();
+ 	}
+ 
+ 	protected void HandleProductPageClosed(ProductPage page)
+@@ -296,6 +303,8 @@ public class ProductPageContainer : MonoBehaviour
+ 			i.Unload();
+ 		});
+ 		m_pages.Clear();
++
++		HideThis();
+ 	}
+ 
+ 	protected IEnumerator OpenProductPageCoroutine()
+@@ -346,4 +355,44 @@ public class ProductPageContainer : MonoBehaviour
+ 			}
+ 		}
+ 	}
++
++	#region Accessibility
++
++	private void OnOpenProductPage()
++	{
++		if (!AccessibilityUtils.CanSeeShop())
++		{
++			return;
++		}
++
++		AccessibilityMgr.ShowUI(this);
++	}
++
++	private void HideThis()
++	{
++		if (!AccessibilityUtils.CanSeeShop())
++		{
++			return;
++		}
++
++		AccessibilityMgr.HideUI(this);
++		Shop.Get()?.Browser?.OnProductPageClosed();
++	}
++
++	private void ReadProductPage()
++	{
++		m_currentProductPage.ReadProductPage();
++	}
++
++	public void HandleAccessibleInput()
++	{
++		m_currentProductPage?.HandleAccessibleInput();
++	}
++
++	public string GetAccessibleHelp()
++	{
++		return m_currentProductPage?.GetAccessibleHelp();
++	}
++
++	#endregion
+ }
 diff --git a/Decompiled/Assembly-CSharp/QuestLog.cs b/Decompiled/Assembly-CSharp/QuestLog.cs
 index f7ab00d..60e40ef 100644
 --- a/Decompiled/Assembly-CSharp/QuestLog.cs
@@ -35537,6 +38044,520 @@ index e3788b7..fd0eeb1 100644
 +
 +	#endregion
  }
+diff --git a/Decompiled/Assembly-CSharp/Shop.cs b/Decompiled/Assembly-CSharp/Shop.cs
+index 64f2e2f..17dc316 100644
+--- a/Decompiled/Assembly-CSharp/Shop.cs
++++ b/Decompiled/Assembly-CSharp/Shop.cs
+@@ -13,6 +13,7 @@ using Hearthstone.DataModels;
+ using Hearthstone.UI;
+ using PegasusUtil;
+ using UnityEngine;
++using Accessibility;
+ 
+ public class Shop : MonoBehaviour, IStore
+ {
+@@ -28,7 +29,7 @@ public class Shop : MonoBehaviour, IStore
+ 	private delegate void ReopenCallback();
+ 
+ 	[SerializeField]
+-	protected UIBScrollable m_browserScroller;
++	internal UIBScrollable m_browserScroller;
+ 
+ 	[SerializeField]
+ 	protected VisualController m_shopStateController;
+@@ -312,6 +313,8 @@ public class Shop : MonoBehaviour, IStore
+ 			{
+ 				this.OnOpened();
+ 			}
++
++			m_browser.OnShopOpened();
+ 		}
+ 	}
+ 
+diff --git a/Decompiled/Assembly-CSharp/ShopBrowser.cs b/Decompiled/Assembly-CSharp/ShopBrowser.cs
+index 7cc1799..175f106 100644
+--- a/Decompiled/Assembly-CSharp/ShopBrowser.cs
++++ b/Decompiled/Assembly-CSharp/ShopBrowser.cs
+@@ -5,8 +5,9 @@ using System.Linq;
+ using Hearthstone.DataModels;
+ using Hearthstone.UI;
+ using UnityEngine;
++using Accessibility;
+ 
+-public class ShopBrowser : MonoBehaviour
++public class ShopBrowser : MonoBehaviour, AccessibleUI
+ {
+ 	[SerializeField]
+ 	protected ShopProductData[] m_testData;
+@@ -320,6 +321,8 @@ public class ShopBrowser : MonoBehaviour
+ 			}
+ 		}
+ 		ResizeTierCount(0);
++
++		AccessibilityMgr.HideUI(this);
+ 	}
+ 
+ 	private void RecordStartLoading()
+@@ -336,6 +339,8 @@ public class ShopBrowser : MonoBehaviour
+ 		m_isLoading = false;
+ 		m_timeSpentLoading = DateTime.UtcNow - m_timeStartedLoading;
+ 		Log.Store.PrintDebug("Shop load done at {0} seconds {1} frames", m_timeSpentLoading.TotalSeconds, m_framesSpentLoading);
++
++		ReadShop();
+ 	}
+ 
+ 	private void UpdateLoadingStats()
+@@ -499,4 +504,369 @@ public class ShopBrowser : MonoBehaviour
+ 		Log.Store.PrintDebug("Finished loading section {0} contents at frame = {1}, time = {2}", sectionIndex, m_framesSpentLoading, m_timeSpentLoading.TotalSeconds);
+ 		onComplete(obj: true);
+ 	}
++
++	#region Accessibility
++	private enum State
++	{
++		LOADING,
++		MAIN_MENU,
++		BUY_PACKS_SELECT_FORMAT_MENU,
++		BUY_PACKS_STANDARD_MENU,
++		BUY_PACKS_WILD_MENU,
++		BUY_MINI_SETS_MENU,
++	}
++
++	private State m_curState;
++
++	private AccessibleMenu m_accessibleShopMenu;
++
++	private AccessibleMenu m_buyPacksSelectFormatMenu;
++
++	private AccessibleMenu m_buyPacksMenu;
++
++	private List<ShopSlot> m_availablePacks;
++
++	private AccessibleMenu m_buyMiniSetsMenu;
++
++	private List<ShopSlot> m_availableMiniSets;
++
++	private bool m_hasProductPageOpened;
++
++	internal void OnShopOpened()
++	{
++		if (!AccessibilityUtils.CanSeeShop())
++		{
++			return;
++		}
++
++		AccessibilityMgr.ShowUI(this);
++		AccessibilityMgr.Output(this, LocalizedText.GLOBAL_LOADING);
++		AccessibilityMgr.Output(this, LocalizedText.GLOBAL_PLEASE_WAIT);
++		m_curState = State.LOADING;
++	}
++
++	private void ReadShop()
++	{
++		var slots = GetAllSlots();
++
++		var packs = GetCardPackSlots(slots);
++		m_availablePacks = AccessibleShopUtils.FilterSlotsWhichCanBeBoughtWithGold(packs);
++
++		var miniSets = GetMiniSetSlots(slots);
++		m_availableMiniSets = AccessibleShopUtils.FilterSlotsWhichCanBeBoughtWithGold(miniSets);
++
++		m_accessibleShopMenu = new AccessibleMenu(this, "", () => Shop.Get().Close(true));
++		m_accessibleShopMenu.AddOption(LocalizationUtils.Get(LocalizationKey.UI_SHOP_READ_GOLD), ReadGold);
++
++		if (m_availablePacks.Count > 0)
++		{
++			m_accessibleShopMenu.AddOption(LocalizationUtils.Get(LocalizationKey.UI_SHOP_BUY_PACKS), BuyPacksSelectFormat);
++		}
++
++		if (m_availableMiniSets.Count > 0)
++		{
++			m_accessibleShopMenu.AddOption(LocalizationUtils.Get(LocalizationKey.UI_SHOP_BUY_MINI_SETS), BuyMiniSets);
++		}
++
++		AccessibilityMgr.Output(this, GameStrings.Get("GLUE_STORE_HEADLINE"));
++		ReadShopMainMenu();
++	}
++
++	private void ReadShopMainMenu()
++	{
++		m_accessibleShopMenu.StartReading();
++		m_curState = State.MAIN_MENU;
++	}
++
++	private void BuyPacksSelectFormat()
++	{
++		m_buyPacksSelectFormatMenu = new AccessibleMenu(this, "", ReadShopMainMenu);
++
++		if (CanBuyStandardPacks())
++		{
++			m_buyPacksSelectFormatMenu.AddOption(GameStrings.Get("GLOBAL_STANDARD"), BuyPacksStandard);
++		}
++		if (CanBuyWildPacks())
++		{
++			m_buyPacksSelectFormatMenu.AddOption(GameStrings.Get("GLOBAL_WILD"), BuyPacksWild);
++		}
++
++		ReadBuyPacksSelectFormatMenu();
++	}
++
++	private void ReadBuyPacksSelectFormatMenu()
++	{
++		m_buyPacksSelectFormatMenu?.StartReading();
++		m_curState = State.BUY_PACKS_SELECT_FORMAT_MENU;
++	}
++
++	private void BuyPacksStandard()
++	{
++		var standardPacks = GetAvailableStandardPacks();
++		m_buyPacksMenu = new AccessibleMenu(this, "", ReadBuyPacksSelectFormatMenu);
++
++		foreach (var pack in standardPacks)
++		{
++			m_buyPacksMenu.AddOption(GetPackName(pack), () => OpenShopSlot(pack), () => ScrollToShopSlot(pack));
++		}
++
++		m_buyPacksMenu.StartReading();
++		m_curState = State.BUY_PACKS_STANDARD_MENU;
++	}
++
++	private void BuyPacksWild()
++	{
++		var wildPacks = GetAvailableWildPacks();
++		m_buyPacksMenu = new AccessibleMenu(this, "", ReadBuyPacksSelectFormatMenu);
++
++		foreach (var pack in wildPacks)
++		{
++			m_buyPacksMenu.AddOption(GetPackName(pack), () => OpenShopSlot(pack), () => ScrollToShopSlot(pack));
++		}
++
++		m_buyPacksMenu.StartReading();
++		m_curState = State.BUY_PACKS_WILD_MENU;
++	}
++
++	private string GetPackName(ShopSlot pack)
++	{
++		var packDataModel = GetPackDataModel(pack);
++		return AccessibleCardUtils.GetCardPackName((int)packDataModel.Type);
++	}
++
++	private List<ShopSlot> GetAvailableStandardPacks()
++	{
++		var ret = new List<ShopSlot>();
++
++		foreach (var pack in m_availablePacks)
++		{
++			if (IsStandardPack(pack))
++			{
++				ret.Add(pack);
++			}
++		}
++
++		return ret;
++	}
++
++	private List<ShopSlot> GetAvailableWildPacks()
++	{
++		var ret = new List<ShopSlot>();
++
++		foreach (var pack in m_availablePacks)
++		{
++			if (IsWildPack(pack))
++			{
++				ret.Add(pack);
++			}
++		}
++
++		return ret;
++	}
++
++	private bool CanBuyStandardPacks()
++	{
++		foreach (var pack in m_availablePacks)
++		{
++			if (IsStandardPack(pack))
++			{
++				return true;
++			}
++		}
++
++		return false;
++	}
++
++	private bool CanBuyWildPacks()
++	{
++		foreach (var pack in m_availablePacks)
++		{
++			if (IsWildPack(pack))
++			{
++				return true;
++			}
++		}
++
++		return false;
++	}
++
++	private bool IsStandardPack(ShopSlot pack)
++	{
++		return !IsWildPack(pack);
++	}
++
++	private bool IsWildPack(ShopSlot pack)
++	{
++		return GameUtils.IsBoosterRotated(GetPackDataModel(pack).Type, DateTime.UtcNow);
++	}
++
++	private void BuyMiniSets()
++	{
++		m_buyMiniSetsMenu = new AccessibleMenu(this, "", ReadShopMainMenu);
++
++		foreach (var miniSet in m_availableMiniSets)
++		{
++			m_buyMiniSetsMenu.AddOption(GetMiniSetName(miniSet), () => OpenShopSlot(miniSet), () => ScrollToShopSlot(miniSet));
++		}
++
++		ReadBuyMiniSetsMenu();
++	}
++
++	private void ReadBuyMiniSetsMenu()
++	{
++		m_buyMiniSetsMenu.StartReading();
++		m_curState = State.BUY_MINI_SETS_MENU;
++	}
++
++	private string GetMiniSetName(ShopSlot miniSet)
++	{
++		return miniSet.m_productDataModel.Name;
++	}
++
++	private void ReadGold()
++	{
++		AccessibleShopUtils.ReadGold(this);
++	}
++
++	private PackDataModel GetPackDataModel(ShopSlot pack)
++	{
++		var productDataModel = pack.m_productDataModel;
++		var rewardItemDataModel = productDataModel.Items[0];
++		return rewardItemDataModel.Booster;
++	}
++
++	private List<ShopSlot> GetAllSlots()
++	{
++		var ret = new List<ShopSlot>();
++
++		foreach (var section in m_shopSections)
++		{
++			var slots = section.GetSortedEnabledSlots();
++
++			foreach (var slot in slots)
++			{
++				ret.Add(slot);
++			}
++		}
++
++		return ret;
++	}
++
++	private List<ShopSlot> GetCardPackSlots(List<ShopSlot> slots)
++	{
++		var ret = new List<ShopSlot>();
++
++		foreach (var slot in slots)
++		{
++			if (AccessibleShopUtils.IsAvailable(slot) && AccessibleShopUtils.IsCardPackSlot(slot))
++			{
++				ret.Add(slot);
++			}
++		}
++
++		return ret;
++	}
++
++	private List<ShopSlot> GetMiniSetSlots(List<ShopSlot> slots)
++	{
++		var ret = new List<ShopSlot>();
++
++		foreach (var slot in slots)
++		{
++			if (AccessibleShopUtils.IsAvailable(slot) && AccessibleShopUtils.IsMiniSetSlot(slot))
++			{
++				ret.Add(slot);
++			}
++		}
++
++		return ret;
++	}
++
++	private void OpenShopSlot(ShopSlot slot)
++	{
++		m_hasProductPageOpened = true;
++		slot.ClickOpen();
++	}
++
++	private void ScrollToShopSlot(ShopSlot slot)
++	{
++		AccessibilityUtils.CenterScrollbarAroundObject(Shop.Get().m_browserScroller, slot.gameObject);
++	}
++
++	internal void OnProductPageClosed()
++	{
++		if (!m_hasProductPageOpened)
++		{
++			return;
++		}
++
++		if (m_curState == State.BUY_PACKS_STANDARD_MENU || m_curState == State.BUY_PACKS_WILD_MENU)
++		{
++			m_buyPacksMenu?.StartReading();
++		}
++		else if (m_curState == State.BUY_MINI_SETS_MENU)
++		{
++			m_buyMiniSetsMenu?.StartReading();
++		}
++
++		m_hasProductPageOpened = false;
++	}
++
++	internal void OnStorePurchaseAuthClosed(bool purchaseSuccess)
++	{
++		Shop.Get()?.CurrentProductPage?.OnStorePurchaseAuthClosed(purchaseSuccess);
++	}
++
++	public void HandleAccessibleInput()
++	{
++		if (m_curState == State.LOADING || m_hasProductPageOpened)
++		{
++			return;
++		}
++
++		if (m_curState == State.MAIN_MENU)
++		{
++			m_accessibleShopMenu?.HandleAccessibleInput();
++		}
++		else if (m_curState == State.BUY_PACKS_SELECT_FORMAT_MENU)
++		{
++			m_buyPacksSelectFormatMenu?.HandleAccessibleInput();
++		}
++		else if (m_curState == State.BUY_PACKS_STANDARD_MENU || m_curState == State.BUY_PACKS_WILD_MENU)
++		{
++			m_buyPacksMenu?.HandleAccessibleInput();
++		}
++		else if (m_curState == State.BUY_MINI_SETS_MENU)
++		{
++			m_buyMiniSetsMenu?.HandleAccessibleInput();
++		}
++	}
++
++	public string GetAccessibleHelp()
++	{
++		if (m_curState == State.LOADING)
++		{
++			return LocalizedText.GLOBAL_LOADING;
++		}
++		else if (m_curState == State.MAIN_MENU)
++		{
++			return m_accessibleShopMenu?.GetHelp();
++		}
++		else if (m_curState == State.BUY_PACKS_SELECT_FORMAT_MENU)
++		{
++			return m_buyPacksSelectFormatMenu?.GetHelp();
++		}
++		else if (m_curState == State.BUY_PACKS_STANDARD_MENU || m_curState == State.BUY_PACKS_WILD_MENU)
++		{
++			return m_buyPacksMenu?.GetHelp();
++		}
++		else if (m_curState == State.BUY_MINI_SETS_MENU)
++		{
++			return m_buyMiniSetsMenu?.GetHelp();
++		}
++
++		return "";
++	}
++
++	#endregion
+ }
+diff --git a/Decompiled/Assembly-CSharp/ShopCardList.cs b/Decompiled/Assembly-CSharp/ShopCardList.cs
+index b6d3633..5bd4013 100644
+--- a/Decompiled/Assembly-CSharp/ShopCardList.cs
++++ b/Decompiled/Assembly-CSharp/ShopCardList.cs
+@@ -7,7 +7,7 @@ public class ShopCardList
+ {
+ 	private UIBScrollable m_scrollbar;
+ 
+-	private MiniSetDetailsDataModel m_dataModel;
++	internal MiniSetDetailsDataModel m_dataModel;
+ 
+ 	private CardTileDataModel m_clickedTile;
+ 
+diff --git a/Decompiled/Assembly-CSharp/ShopSlot.cs b/Decompiled/Assembly-CSharp/ShopSlot.cs
+index a6749fe..48755e4 100644
+--- a/Decompiled/Assembly-CSharp/ShopSlot.cs
++++ b/Decompiled/Assembly-CSharp/ShopSlot.cs
+@@ -71,6 +71,10 @@ public class ShopSlot : ShopBrowserElement
+ 		}
+ 	}
+ 
++	#region Accessibility
++	internal ProductDataModel m_productDataModel;
++	#endregion
++
+ 	private void Start()
+ 	{
+ 		m_widget = GetComponent<Widget>();
+@@ -160,12 +164,12 @@ public class ShopSlot : ShopBrowserElement
+ 	public void SetBrowserButton(ShopBrowserButtonDataModel buttonDataModel)
+ 	{
+ 		DataModel = buttonDataModel;
+-		ProductDataModel productDataModel = buttonDataModel.DisplayProduct ?? ProductFactory.CreateEmptyProductDataModel();
+-		m_isFilled = productDataModel != ProductFactory.CreateEmptyProductDataModel();
++		m_productDataModel = buttonDataModel.DisplayProduct ?? ProductFactory.CreateEmptyProductDataModel();
++		m_isFilled = m_productDataModel != ProductFactory.CreateEmptyProductDataModel();
+ 		RefreshEnableInput();
+ 		if (m_widget != null)
+ 		{
+-			m_widget.BindDataModel(productDataModel);
++			m_widget.BindDataModel(m_productDataModel);
+ 		}
+ 		StartCoroutine(DisableChildCollidersCoroutine());
+ 		UpdateSize();
+@@ -304,4 +308,12 @@ public class ShopSlot : ShopBrowserElement
+ 			}
+ 		}
+ 	}
++
++	#region Accessibility
++	internal void ClickOpen()
++	{
++		Clickable component = GetComponent<Clickable>();
++		component.GetPegUIElement()?.TriggerRelease();
++	}
++	#endregion
+ }
+diff --git a/Decompiled/Assembly-CSharp/ShopUtils.cs b/Decompiled/Assembly-CSharp/ShopUtils.cs
+index b3ec151..32e0db2 100644
+--- a/Decompiled/Assembly-CSharp/ShopUtils.cs
++++ b/Decompiled/Assembly-CSharp/ShopUtils.cs
+@@ -8,6 +8,7 @@ using Hearthstone.UI;
+ using PegasusShared;
+ using Shared.Scripts.Util;
+ using UnityEngine;
++using Accessibility;
+ 
+ public static class ShopUtils
+ {
+@@ -97,6 +98,11 @@ public static class ShopUtils
+ 
+ 	public static long GetCachedBalance(CurrencyType currencyType)
+ 	{
++		if (HearthstoneAccessConstants.DEV_MODE)
++		{
++			return 327;
++		}
++
+ 		switch (currencyType)
+ 		{
+ 		case CurrencyType.DUST:
 diff --git a/Decompiled/Assembly-CSharp/SocialToastMgr.cs b/Decompiled/Assembly-CSharp/SocialToastMgr.cs
 index 473d79f..1f802f8 100644
 --- a/Decompiled/Assembly-CSharp/SocialToastMgr.cs
@@ -35645,6 +38666,183 @@ index dfeb22a..b887910 100644
  			{
  				flag3 = true;
  				text = "user_attention_blocked";
+diff --git a/Decompiled/Assembly-CSharp/StoreManager.cs b/Decompiled/Assembly-CSharp/StoreManager.cs
+index 12ca1e0..45c8dfb 100644
+--- a/Decompiled/Assembly-CSharp/StoreManager.cs
++++ b/Decompiled/Assembly-CSharp/StoreManager.cs
+@@ -561,7 +561,7 @@ public class StoreManager
+ 		return false;
+ 	}
+ 
+-	private void SetCanTapOutConfirmationUI(bool closeConfirmationUI)
++	internal void SetCanTapOutConfirmationUI(bool closeConfirmationUI)
+ 	{
+ 		m_canCloseConfirmation = closeConfirmationUI;
+ 	}
+@@ -3022,7 +3022,7 @@ public class StoreManager
+ 		GetCurrentStore()?.BlockInterface(blocked: true);
+ 	}
+ 
+-	private void UnblockStoreInterface()
++	internal void UnblockStoreInterface()
+ 	{
+ 		GetCurrentStore()?.BlockInterface(blocked: false);
+ 	}
+diff --git a/Decompiled/Assembly-CSharp/StorePurchaseAuth.cs b/Decompiled/Assembly-CSharp/StorePurchaseAuth.cs
+index 440e7a9..db23a38 100644
+--- a/Decompiled/Assembly-CSharp/StorePurchaseAuth.cs
++++ b/Decompiled/Assembly-CSharp/StorePurchaseAuth.cs
+@@ -3,9 +3,11 @@ using System.Linq;
+ using Hearthstone.Commerce;
+ using PegasusShared;
+ using PegasusUtil;
++using Accessibility;
++using System;
+ 
+ [CustomEditClass]
+-public class StorePurchaseAuth : UIBPopup
++public class StorePurchaseAuth : UIBPopup, AccessibleUI
+ {
+ 	public delegate void AckPurchaseResultListener(bool success, MoneyOrGTAPPTransaction moneyOrGTAPPTransaction);
+ 
+@@ -76,6 +78,7 @@ public class StorePurchaseAuth : UIBPopup
+ 			}
+ 			Navigation.PushBlockBackingOut();
+ 			DoShowAnimation();
++			ReadPopup();
+ 		}
+ 	}
+ 
+@@ -151,6 +154,8 @@ public class StorePurchaseAuth : UIBPopup
+ 
+ 	public override void Hide()
+ 	{
++		HideThis();
++
+ 		if (m_shown)
+ 		{
+ 			m_shown = false;
+@@ -313,6 +318,8 @@ public class StorePurchaseAuth : UIBPopup
+ 		m_failHeadlineText.gameObject.SetActive(value: false);
+ 		m_failDetailsText.gameObject.SetActive(value: false);
+ 		m_spell.ActivateState(SpellStateType.ACTION);
++
++		ReadPurchaseSuccess();
+ 	}
+ 
+ 	private void ShowPurchaseFailure(MoneyOrGTAPPTransaction moneyOrGTAPPTransaction, string failDetails, bool showMiniSummary, Network.PurchaseErrorInfo.ErrorType error)
+@@ -336,6 +343,8 @@ public class StorePurchaseAuth : UIBPopup
+ 		m_failHeadlineText.gameObject.SetActive(value: true);
+ 		m_failDetailsText.gameObject.SetActive(value: true);
+ 		m_spell.ActivateState(SpellStateType.DEATH);
++
++		ReadPurchaseFailure();
+ 	}
+ 
+ 	private void ShowMiniSummary()
+@@ -348,4 +357,102 @@ public class StorePurchaseAuth : UIBPopup
+ 			m_root.UpdateSlices();
+ 		}
+ 	}
++
++	#region Accessibility
++
++	private enum State
++	{
++		LOADING,
++		TEXT_ONLY,
++		TEXT_AND_OK_BUTTON
++	};
++
++	private State m_curState;
++
++	private AccessibleMultilineText m_accessibleText;
++
++	private void ReadPopup()
++	{
++		if (!AccessibilityUtils.CanSeeShop())
++		{
++			return;
++		}
++
++		AccessibilityMgr.ShowUI(this);
++		m_accessibleText = new AccessibleMultilineText(this, m_waitingForAuthText.Text);
++		m_accessibleText.ReadAllLines();
++
++		m_curState = State.TEXT_ONLY;
++	}
++
++	private void ReadPurchaseSuccess()
++	{
++		m_accessibleText = new AccessibleMultilineText(this, m_successHeadlineText.Text, AccessibleSpeech.PRESS_ENTER_TO_CONTINUE);
++		m_accessibleText.ReadAllLines();
++
++		m_curState = State.TEXT_AND_OK_BUTTON;
++	}
++
++	private void ReadPurchaseFailure()
++	{
++		m_accessibleText = new AccessibleMultilineText(this, m_failHeadlineText.Text, m_failDetailsText.Text, AccessibleSpeech.PRESS_ENTER_TO_CONTINUE);
++		m_accessibleText.ReadAllLines();
++
++		m_curState = State.TEXT_AND_OK_BUTTON;
++	}
++
++	private void HideThis()
++	{
++		if (!AccessibilityUtils.CanSeeShop())
++		{
++			return;
++		}
++
++		AccessibilityMgr.HideUI(this);
++		Shop.Get()?.Browser?.OnStorePurchaseAuthClosed(m_showingSuccess);
++
++		// Unblock interface since we're shortcutting a lot of stuff
++		StoreManager.Get()?.SetCanTapOutConfirmationUI(closeConfirmationUI: true);
++		StoreManager.Get()?.UnblockStoreInterface();
++	}
++
++	public void HandleAccessibleInput()
++	{
++		if (HearthstoneAccessConstants.DEV_MODE)
++		{
++			if (AccessibleKey.DEV_1.IsPressed())
++			{
++				ShowPurchaseSuccess(null, false);
++			}
++			else if (AccessibleKey.DEV_2.IsPressed())
++			{
++				ShowPurchaseFailure(null, "Failed for some reason", false, Network.PurchaseErrorInfo.ErrorType.UNKNOWN);
++			}
++		}
++
++		if (m_curState == State.TEXT_ONLY || m_curState == State.TEXT_AND_OK_BUTTON)
++		{
++			m_accessibleText?.HandleAccessibleInput();
++		}
++
++		if (m_curState == State.TEXT_AND_OK_BUTTON)
++		{
++			if (AccessibleKey.CONFIRM.IsPressed())
++			{
++				m_okButton.TriggerRelease();
++			}
++		}
++	}
++
++	public string GetAccessibleHelp()
++	{
++		if (m_curState == State.TEXT_AND_OK_BUTTON)
++		{
++			return AccessibleSpeech.PRESS_ENTER_TO_CONTINUE;
++		}
++
++		return "";
++	}
++
++	#endregion
+ }
 diff --git a/Decompiled/Assembly-CSharp/SubSpellController.cs b/Decompiled/Assembly-CSharp/SubSpellController.cs
 index a45013a..76e6033 100644
 --- a/Decompiled/Assembly-CSharp/SubSpellController.cs
@@ -36149,6 +39347,19 @@ index c2e385c..592cc33 100644
 +		// See AccessibleTutorial_06
 +    }
  }
+diff --git a/Decompiled/Assembly-CSharp/UIBScrollable.cs b/Decompiled/Assembly-CSharp/UIBScrollable.cs
+index 03de1ca..cc85f70 100644
+--- a/Decompiled/Assembly-CSharp/UIBScrollable.cs
++++ b/Decompiled/Assembly-CSharp/UIBScrollable.cs
+@@ -200,7 +200,7 @@ public class UIBScrollable : PegUICustomBehavior
+ 
+ 	private bool m_ForceShowVisibleAffectedObjects;
+ 
+-	private List<UIBScrollableItem> m_scrollableItems = new List<UIBScrollableItem>();
++	internal List<UIBScrollableItem> m_scrollableItems = new List<UIBScrollableItem>();
+ 
+ 	private int m_currentHierarchyCount;
+ 
 diff --git a/Decompiled/Assembly-CSharp/UIStatus.cs b/Decompiled/Assembly-CSharp/UIStatus.cs
 index 2a6b574..36349f9 100644
 --- a/Decompiled/Assembly-CSharp/UIStatus.cs
