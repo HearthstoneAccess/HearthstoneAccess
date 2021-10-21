@@ -1,5 +1,5 @@
 diff --git a/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs b/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
-index d83a4d3..7f1bb62 100644
+index 361bb12..4f24dff 100644
 --- a/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
 @@ -5,8 +5,9 @@ using Hearthstone.DataModels;
@@ -16159,7 +16159,7 @@ index 0000000..9473d38
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 0000000..5523568
+index 0000000..9630276
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -16169,9 +16169,9 @@ index 0000000..5523568
 +{
 +    public class HearthstoneAccessConstants
 +    {
-+        public static string HEARTHSTONE_VERSION = "21.4.0.95431";
++        public static string HEARTHSTONE_VERSION = "21.4.4.121569";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "12";
++        public static string HEARTHSTONE_ACCESS_VERSION = "13";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -26416,7 +26416,7 @@ index f68096c..9fd0343 100644
  
  	public override void UpdateDoneButtonText()
 diff --git a/Decompiled/Assembly-CSharp/CollectionInputMgr.cs b/Decompiled/Assembly-CSharp/CollectionInputMgr.cs
-index 9c7ef7e..470de7a 100644
+index a8a6817..7d232f2 100644
 --- a/Decompiled/Assembly-CSharp/CollectionInputMgr.cs
 +++ b/Decompiled/Assembly-CSharp/CollectionInputMgr.cs
 @@ -1,3 +1,4 @@
@@ -26424,29 +26424,32 @@ index 9c7ef7e..470de7a 100644
  using System.Collections.Generic;
  using Hearthstone;
  using Hearthstone.DataModels;
-@@ -76,20 +77,7 @@ public class CollectionInputMgr : MonoBehaviour
+@@ -80,23 +81,7 @@ public class CollectionInputMgr : MonoBehaviour
  			bool flag = CollectionDeckTray.Get().IsShowingDeckContents();
  			if (InputCollection.GetKeyDown(KeyCode.C) && flag)
  			{
 -				CollectionDeck editedDeck = CollectionManager.Get().GetEditedDeck();
--				if (editedDeck.CanCopyAsShareableDeck(out var topViolation))
+-				if (editedDeck != null && UIStatus.Get() != null)
 -				{
--					ClipboardUtils.CopyToClipboard(editedDeck.GetShareableDeck().Serialize());
--					UIStatus.Get().AddInfo(GameStrings.Get("GLUE_COLLECTION_DECK_COPIED_TOAST"));
--				}
--				else
--				{
--					string userFriendlyCopyErrorMessageFromDeckRuleViolation = CollectionDeck.GetUserFriendlyCopyErrorMessageFromDeckRuleViolation(topViolation);
--					if (!string.IsNullOrEmpty(userFriendlyCopyErrorMessageFromDeckRuleViolation))
+-					if (editedDeck.CanCopyAsShareableDeck(out var topViolation))
 -					{
--						UIStatus.Get().AddInfo(userFriendlyCopyErrorMessageFromDeckRuleViolation);
+-						ClipboardUtils.CopyToClipboard(editedDeck.GetShareableDeck().Serialize());
+-						UIStatus.Get().AddInfo(GameStrings.Get("GLUE_COLLECTION_DECK_COPIED_TOAST"));
+-					}
+-					else
+-					{
+-						string userFriendlyCopyErrorMessageFromDeckRuleViolation = CollectionDeck.GetUserFriendlyCopyErrorMessageFromDeckRuleViolation(topViolation);
+-						if (!string.IsNullOrEmpty(userFriendlyCopyErrorMessageFromDeckRuleViolation))
+-						{
+-							UIStatus.Get().AddInfo(userFriendlyCopyErrorMessageFromDeckRuleViolation);
+-						}
 -					}
 -				}
 +				CopyEditedDeck();
  			}
  			if (InputCollection.GetKeyDown(KeyCode.V))
  			{
-@@ -132,7 +120,7 @@ public class CollectionInputMgr : MonoBehaviour
+@@ -139,7 +124,7 @@ public class CollectionInputMgr : MonoBehaviour
  		return false;
  	}
  
@@ -26455,7 +26458,7 @@ index 9c7ef7e..470de7a 100644
  	{
  		ShareableDeck shareableDeck = ShareableDeck.DeserializeFromClipboard();
  		if (shareableDeck != null)
-@@ -810,4 +798,25 @@ public class CollectionInputMgr : MonoBehaviour
+@@ -817,4 +802,29 @@ public class CollectionInputMgr : MonoBehaviour
  			DisableDraggableColliders();
  		}
  	}
@@ -26463,20 +26466,24 @@ index 9c7ef7e..470de7a 100644
 +    #region Accessibility
 +    public void CopyEditedDeck()
 +    {
-+        CollectionDeck editedDeck = CollectionManager.Get().GetEditedDeck();
-+        if (editedDeck.CanCopyAsShareableDeck(out var topViolation))
-+        {
-+            ClipboardUtils.CopyToClipboard(editedDeck.GetShareableDeck().Serialize());
-+            UIStatus.Get().AddInfo(GameStrings.Get("GLUE_COLLECTION_DECK_COPIED_TOAST"));
-+        }
-+        else
-+        {
-+            string userFriendlyCopyErrorMessageFromDeckRuleViolation = CollectionDeck.GetUserFriendlyCopyErrorMessageFromDeckRuleViolation(topViolation);
-+            if (!string.IsNullOrEmpty(userFriendlyCopyErrorMessageFromDeckRuleViolation))
-+            {
-+                UIStatus.Get().AddInfo(userFriendlyCopyErrorMessageFromDeckRuleViolation);
-+            }
-+        }
++      // Used to export decks in the accessible menu
++				CollectionDeck editedDeck = CollectionManager.Get().GetEditedDeck();
++				if (editedDeck != null && UIStatus.Get() != null)
++				{
++					if (editedDeck.CanCopyAsShareableDeck(out var topViolation))
++					{
++						ClipboardUtils.CopyToClipboard(editedDeck.GetShareableDeck().Serialize());
++						UIStatus.Get().AddInfo(GameStrings.Get("GLUE_COLLECTION_DECK_COPIED_TOAST"));
++					}
++					else
++					{
++						string userFriendlyCopyErrorMessageFromDeckRuleViolation = CollectionDeck.GetUserFriendlyCopyErrorMessageFromDeckRuleViolation(topViolation);
++						if (!string.IsNullOrEmpty(userFriendlyCopyErrorMessageFromDeckRuleViolation))
++						{
++							UIStatus.Get().AddInfo(userFriendlyCopyErrorMessageFromDeckRuleViolation);
++						}
++					}
++				}
 +    }
 +
 +    #endregion
@@ -26649,7 +26656,7 @@ index 4980a3a..9669a57 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/CollectionManagerDisplay.cs b/Decompiled/Assembly-CSharp/CollectionManagerDisplay.cs
-index 3c01b35..23d1076 100644
+index 9c4642e..46b23d9 100644
 --- a/Decompiled/Assembly-CSharp/CollectionManagerDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/CollectionManagerDisplay.cs
 @@ -10,6 +10,7 @@ using Hearthstone;
@@ -26924,7 +26931,7 @@ index f135d45..04b79f6 100644
  
  	private void OnRetireButtonReleased(UIEvent e)
 diff --git a/Decompiled/Assembly-CSharp/DeckPickerTrayDisplay.cs b/Decompiled/Assembly-CSharp/DeckPickerTrayDisplay.cs
-index 1bdc15e..8d2895a 100644
+index dbf848d..0497e09 100644
 --- a/Decompiled/Assembly-CSharp/DeckPickerTrayDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/DeckPickerTrayDisplay.cs
 @@ -8,9 +8,10 @@ using Hearthstone.DataModels;
@@ -27677,7 +27684,7 @@ index c0a96d9..76a18c1 100644
  
  	private void ShowDeckHelpButtonIfNeeded()
 diff --git a/Decompiled/Assembly-CSharp/DeckTrayDeckListContent.cs b/Decompiled/Assembly-CSharp/DeckTrayDeckListContent.cs
-index 906dfec..832007e 100644
+index 66968b5..c26401f 100644
 --- a/Decompiled/Assembly-CSharp/DeckTrayDeckListContent.cs
 +++ b/Decompiled/Assembly-CSharp/DeckTrayDeckListContent.cs
 @@ -6,6 +6,7 @@ using Hearthstone;
@@ -28450,7 +28457,7 @@ index 869b7b1..9adbc09 100644
  	public class Info
  	{
 diff --git a/Decompiled/Assembly-CSharp/FriendChallengeMgr.cs b/Decompiled/Assembly-CSharp/FriendChallengeMgr.cs
-index 2f12a8b..2e4972a 100644
+index abec7cb..963d37d 100644
 --- a/Decompiled/Assembly-CSharp/FriendChallengeMgr.cs
 +++ b/Decompiled/Assembly-CSharp/FriendChallengeMgr.cs
 @@ -12,6 +12,7 @@ using PegasusShared;
@@ -30431,7 +30438,7 @@ index 1263ae0..57b6811 100644
  		return value > 0;
  	}
 diff --git a/Decompiled/Assembly-CSharp/GameState.cs b/Decompiled/Assembly-CSharp/GameState.cs
-index fff45a0..bb8d60b 100644
+index f9efe5d..5624a83 100644
 --- a/Decompiled/Assembly-CSharp/GameState.cs
 +++ b/Decompiled/Assembly-CSharp/GameState.cs
 @@ -7,6 +7,7 @@ using System.Text;
@@ -30586,7 +30593,7 @@ index 9a92e75..f6a83a7 100644
 +    #endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/GameUtils.cs b/Decompiled/Assembly-CSharp/GameUtils.cs
-index c207648..aed65f9 100644
+index d7298c6..9152bd6 100644
 --- a/Decompiled/Assembly-CSharp/GameUtils.cs
 +++ b/Decompiled/Assembly-CSharp/GameUtils.cs
 @@ -13,6 +13,7 @@ using PegasusShared;
@@ -30619,7 +30626,7 @@ index c207648..aed65f9 100644
  		NetCache.NetCacheFeatures netObject = NetCache.Get().GetNetObject<NetCache.NetCacheFeatures>();
  		if (netObject == null)
  		{
-@@ -2270,6 +2279,12 @@ public class GameUtils
+@@ -2281,6 +2290,12 @@ public class GameUtils
  		{
  			return false;
  		}
@@ -30632,7 +30639,7 @@ index c207648..aed65f9 100644
  		return Options.Get().GetBool(Option.FAKE_PACK_OPENING);
  	}
  
-@@ -2279,6 +2294,12 @@ public class GameUtils
+@@ -2290,6 +2305,12 @@ public class GameUtils
  		{
  			return 0;
  		}
@@ -30645,7 +30652,7 @@ index c207648..aed65f9 100644
  		return Options.Get().GetInt(Option.FAKE_PACK_COUNT);
  	}
  
-@@ -2938,4 +2959,79 @@ public class GameUtils
+@@ -2949,4 +2970,79 @@ public class GameUtils
  			GameSaveDataManager.Get().SaveSubkey(new GameSaveDataManager.SubkeySaveRequest(saveKey, subkey, 1L));
  		}
  	}
@@ -30810,7 +30817,7 @@ index bc5d094..2cf7d0f 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
-index 0433b45..1c2a164 100644
+index 557357a..d21b89f 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 @@ -92,6 +92,37 @@ namespace Hearthstone
@@ -30852,7 +30859,7 @@ index 0433b45..1c2a164 100644
  		{
  			if (PlatformSettings.IsMobileRuntimeOS && (on ^ m_ANRMonitorOn))
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
-index 997c737..5d1a53e 100644
+index 554d3e7..af5f477 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 @@ -5,6 +5,7 @@ using System.IO;
@@ -30902,7 +30909,7 @@ index 997c737..5d1a53e 100644
 -			ExceptionReporterControl.Get().ExceptionReportInitialize();
 +			// ExceptionReporterControl.Get().ExceptionReportInitialize(); // Remove so we don't send Blizzard exceptions that may be caused by us
 +			ExceptionReporterControl.Get().ExceptionReportInitializeDebug();
- 			HearthstonePerformance.Initialize(TestType, 2423078.ToString());
+ 			HearthstonePerformance.Initialize(TestType, 2471887.ToString());
  			HearthstonePerformance.Get()?.CaptureAppStartTime();
  			AppLaunchTracker.TrackAppLaunch();
 @@ -207,6 +213,8 @@ namespace Hearthstone
@@ -31062,10 +31069,10 @@ index b7dcf52..d644fe6 100644
  	}
  }
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/LettuceVillage.cs b/Decompiled/Assembly-CSharp/Hearthstone/LettuceVillage.cs
-index f3c5083..a978373 100644
+index a2e807e..bd31997 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/LettuceVillage.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/LettuceVillage.cs
-@@ -404,7 +404,7 @@ namespace Hearthstone
+@@ -409,7 +409,7 @@ namespace Hearthstone
  					break;
  				}
  			}
@@ -34095,10 +34102,10 @@ index e83edcb..8e74ef3 100644
  			return false;
  		}
 diff --git a/Decompiled/Assembly-CSharp/NetCache.cs b/Decompiled/Assembly-CSharp/NetCache.cs
-index 5e11221..daab75b 100644
+index 2741859..a8ce186 100644
 --- a/Decompiled/Assembly-CSharp/NetCache.cs
 +++ b/Decompiled/Assembly-CSharp/NetCache.cs
-@@ -2495,24 +2495,50 @@ public class NetCache : IService, IHasUpdate
+@@ -2502,24 +2502,50 @@ public class NetCache : IService, IHasUpdate
  		return GetNetObject<T>() != null;
  	}
  
@@ -34157,7 +34164,7 @@ index 5e11221..daab75b 100644
  		Type typeFromHandle = typeof(T);
  		m_netCache[typeFromHandle] = null;
 diff --git a/Decompiled/Assembly-CSharp/Network.cs b/Decompiled/Assembly-CSharp/Network.cs
-index fb5d094..bda867e 100644
+index b55943b..7dda544 100644
 --- a/Decompiled/Assembly-CSharp/Network.cs
 +++ b/Decompiled/Assembly-CSharp/Network.cs
 @@ -31,6 +31,7 @@ using Shared.Scripts.Game.Shop.Product;
@@ -34400,7 +34407,7 @@ index bc5a647..08b407d 100644
  	};
  }
 diff --git a/Decompiled/Assembly-CSharp/OptionsMenu.cs b/Decompiled/Assembly-CSharp/OptionsMenu.cs
-index 83f68b7..0bd393c 100644
+index 7d37e82..3561895 100644
 --- a/Decompiled/Assembly-CSharp/OptionsMenu.cs
 +++ b/Decompiled/Assembly-CSharp/OptionsMenu.cs
 @@ -3,9 +3,10 @@ using System.Collections.Generic;
@@ -38667,10 +38674,10 @@ index dfeb22a..b887910 100644
  				flag3 = true;
  				text = "user_attention_blocked";
 diff --git a/Decompiled/Assembly-CSharp/StoreManager.cs b/Decompiled/Assembly-CSharp/StoreManager.cs
-index 12ca1e0..45c8dfb 100644
+index 79c391f..947d6d2 100644
 --- a/Decompiled/Assembly-CSharp/StoreManager.cs
 +++ b/Decompiled/Assembly-CSharp/StoreManager.cs
-@@ -561,7 +561,7 @@ public class StoreManager
+@@ -565,7 +565,7 @@ public class StoreManager
  		return false;
  	}
  
@@ -38679,7 +38686,7 @@ index 12ca1e0..45c8dfb 100644
  	{
  		m_canCloseConfirmation = closeConfirmationUI;
  	}
-@@ -3022,7 +3022,7 @@ public class StoreManager
+@@ -3026,7 +3026,7 @@ public class StoreManager
  		GetCurrentStore()?.BlockInterface(blocked: true);
  	}
  
