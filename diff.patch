@@ -17219,7 +17219,7 @@ index 0000000..9473d38
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 0000000..752c4d6
+index 0000000..4e6d8bd
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -17229,7 +17229,7 @@ index 0000000..752c4d6
 +{
 +    public class HearthstoneAccessConstants
 +    {
-+        public static string HEARTHSTONE_VERSION = "21.8.0.126299";
++        public static string HEARTHSTONE_VERSION = "21.8.0.126451";
 +
 +        public static string HEARTHSTONE_ACCESS_VERSION = "16";
 +
@@ -32582,7 +32582,7 @@ index 1263ae0..57b6811 100644
  		return value > 0;
  	}
 diff --git a/Decompiled/Assembly-CSharp/GameState.cs b/Decompiled/Assembly-CSharp/GameState.cs
-index bcae87d..c9af81f 100644
+index 2d3b930..bf70f3c 100644
 --- a/Decompiled/Assembly-CSharp/GameState.cs
 +++ b/Decompiled/Assembly-CSharp/GameState.cs
 @@ -7,6 +7,7 @@ using System.Text;
@@ -33059,7 +33059,7 @@ index 760d6f8..6e61d40 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
-index 65623a0..c30de49 100644
+index a2eb86c..1729dfb 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 @@ -94,6 +94,37 @@ namespace Hearthstone
@@ -33101,7 +33101,7 @@ index 65623a0..c30de49 100644
  		{
  			if (PlatformSettings.IsMobileRuntimeOS && (on ^ m_ANRMonitorOn))
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
-index dc0afc9..2882f19 100644
+index b4d48f7..b5434e0 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 @@ -5,6 +5,7 @@ using System.IO;
@@ -33151,7 +33151,7 @@ index dc0afc9..2882f19 100644
 -			ExceptionReporterControl.Get().ExceptionReportInitialize();
 +			// ExceptionReporterControl.Get().ExceptionReportInitialize(); // Remove so we don't send Blizzard exceptions that may be caused by us
 +			ExceptionReporterControl.Get().ExceptionReportInitializeDebug();
- 			HearthstonePerformance.Initialize(TestType, 2533549.ToString());
+ 			HearthstonePerformance.Initialize(TestType, 2544369.ToString());
  			HearthstonePerformance.Get()?.CaptureAppStartTime();
  			AppLaunchTracker.TrackAppLaunch();
 @@ -207,6 +213,8 @@ namespace Hearthstone
@@ -36797,7 +36797,7 @@ index 2cee94a..338090d 100644
  		if (netObject == null)
  		{
 diff --git a/Decompiled/Assembly-CSharp/Network.cs b/Decompiled/Assembly-CSharp/Network.cs
-index a639442..4c65eb4 100644
+index 4e31102..a2150db 100644
 --- a/Decompiled/Assembly-CSharp/Network.cs
 +++ b/Decompiled/Assembly-CSharp/Network.cs
 @@ -31,6 +31,7 @@ using Shared.Scripts.Game.Shop.Product;
@@ -37076,7 +37076,7 @@ index 4ac7b6e..d289ccc 100644
  			Option.DEBUG_SHOW_BATTLEGROUND_SKIN_IDS,
  			false
 diff --git a/Decompiled/Assembly-CSharp/OptionsMenu.cs b/Decompiled/Assembly-CSharp/OptionsMenu.cs
-index f78cc3e..c53a3ac 100644
+index aa6e8a3..e52666d 100644
 --- a/Decompiled/Assembly-CSharp/OptionsMenu.cs
 +++ b/Decompiled/Assembly-CSharp/OptionsMenu.cs
 @@ -3,9 +3,10 @@ using System.Collections.Generic;
@@ -41754,10 +41754,10 @@ index dfeb22a..b887910 100644
  				flag3 = true;
  				text = "user_attention_blocked";
 diff --git a/Decompiled/Assembly-CSharp/StoreManager.cs b/Decompiled/Assembly-CSharp/StoreManager.cs
-index c3e12e3..a421135 100644
+index b948025..6637e6c 100644
 --- a/Decompiled/Assembly-CSharp/StoreManager.cs
 +++ b/Decompiled/Assembly-CSharp/StoreManager.cs
-@@ -567,7 +567,7 @@ public class StoreManager
+@@ -565,7 +565,7 @@ public class StoreManager
  		return false;
  	}
  
@@ -41766,7 +41766,7 @@ index c3e12e3..a421135 100644
  	{
  		m_canCloseConfirmation = closeConfirmationUI;
  	}
-@@ -3033,7 +3033,7 @@ public class StoreManager
+@@ -3031,7 +3031,7 @@ public class StoreManager
  		GetCurrentStore()?.BlockInterface(blocked: true);
  	}
  
