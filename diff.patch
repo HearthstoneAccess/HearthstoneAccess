@@ -733,10 +733,10 @@ index 0000000..f148a64
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibilityUtils.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibilityUtils.cs
 new file mode 100644
-index 0000000..d5a630d
+index 0000000..2986473
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibilityUtils.cs
-@@ -0,0 +1,456 @@
+@@ -0,0 +1,463 @@
 +﻿using Assets;
 +using Hearthstone.UI;
 +using System;
@@ -893,6 +893,13 @@ index 0000000..d5a630d
 +        private static string CollapsePeriods(string text)
 +        {
 +            var period = LocalizationUtils.GetPeriod();
++
++            if (period.Equals(""))
++			{
++                // e.g. thTH doesn't have periods
++                return text;
++			}
++
 +            var threePeriods = $"{period}{period}{period}";
 +            var twoPeriods = $"{period}{period}"; // Whatever
 +
@@ -1556,10 +1563,10 @@ index 0000000..cdc2bbd
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleCard.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCard.cs
 new file mode 100644
-index 0000000..c49c889
+index 0000000..940d360
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCard.cs
-@@ -0,0 +1,607 @@
+@@ -0,0 +1,641 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Text;
@@ -1647,7 +1654,7 @@ index 0000000..c49c889
 +        private List<string> GetLinesForTurnBasedHeroInPlayZone()
 +        {
 +            var lines = new List<string>();
-+            lines.Add(GetName());
++            lines.AddRange(GetHeader());
 +
 +            var missionEntity = GameState.Get().GetGameEntity() as MissionEntity;
 +            lines.Add(missionEntity.GetTurnCounterText());
@@ -1660,7 +1667,7 @@ index 0000000..c49c889
 +        private List<string> GetLinesForHeroInPlayZone()
 +        {
 +            var lines = new List<string>();
-+            lines.Add(GetName());
++            lines.AddRange(GetHeader());
 +
 +            var resources = GetResources();
 +            if (resources.Length > 0)
@@ -1700,7 +1707,7 @@ index 0000000..c49c889
 +        private List<string> GetLinesForHeroCard()
 +        {
 +            var lines = new List<string>();
-+            lines.Add(GetName());
++            lines.AddRange(GetHeader());
 +            lines.Add(GetCost());
 +            lines.Add(GetCardType());
 +
@@ -1727,7 +1734,7 @@ index 0000000..c49c889
 +        private List<string> GetLinesForHeroPower()
 +        {
 +            var lines = new List<string>();
-+            lines.Add(GetName());
++            lines.AddRange(GetHeader());
 +
 +            if (!IsCostHidden())
 +            {
@@ -1769,7 +1776,7 @@ index 0000000..c49c889
 +            var isWielded = m_card.GetZone()?.GetType() == typeof(ZoneWeapon);
 +
 +            var lines = new List<string>();
-+            lines.Add(GetName());
++            lines.AddRange(GetHeader());
 +
 +            if (!isWielded)
 +            {
@@ -1797,7 +1804,7 @@ index 0000000..c49c889
 +            var shouldReadCost = !isInPlayZone && !isInSecretZone;
 +
 +            var lines = new List<string>();
-+            lines.Add(GetName());
++            lines.AddRange(GetHeader());
 +
 +            if (shouldReadCost)
 +            {
@@ -1839,7 +1846,7 @@ index 0000000..c49c889
 +        private List<string> GetLinesForQuest()
 +        {
 +            var lines = new List<string>();
-+            lines.Add(GetName());
++            lines.AddRange(GetHeader());
 +
 +            AccessibleCardUtils.AddLineIfExists(GetDescription(), lines);
 +            AccessibleCardUtils.AddLineIfExists(GetQuestProgress(), lines);
@@ -1851,7 +1858,7 @@ index 0000000..c49c889
 +        private List<string> GetLinesForSideQuest()
 +        {
 +            var lines = new List<string>();
-+            lines.Add(GetName());
++            lines.AddRange(GetHeader());
 +
 +            AccessibleCardUtils.AddLineIfExists(GetDescription(), lines);
 +            AccessibleCardUtils.AddLineIfExists(GetQuestProgress(), lines);
@@ -1862,7 +1869,7 @@ index 0000000..c49c889
 +        private List<string> GetLinesForQuestline()
 +        {
 +            var lines = new List<string>();
-+            lines.Add(GetName());
++            lines.AddRange(GetHeader());
 +
 +            AccessibleCardUtils.AddLineIfExists(GetDescription(), lines);
 +
@@ -1877,9 +1884,9 @@ index 0000000..c49c889
 +
 +        private List<string> GetLinesForOpponentSecret()
 +        {
-+            var ret = new List<string>();
-+            ret.Add(GetName());
-+            return ret;
++            var lines = new List<string>();
++            lines.AddRange(GetHeader());
++            return lines;
 +        }
 +
 +        private string GetQuestProgress()
@@ -2025,8 +2032,16 @@ index 0000000..c49c889
 +                cost = 0;
 +            }
 +
-+            return LocalizationUtils.Format(LocalizationKey.READ_CARD_COST, cost);
-+        }
++            if (m_card.GetEntity().HasTag(GAME_TAG.CARD_COSTS_HEALTH))
++			{
++                // Stealer of souls changes cost to health instead of mana
++                return LocalizationUtils.Format(LocalizationKey.READ_HERO_CARD_HEALTH, cost);
++			}
++            else
++			{
++				return LocalizationUtils.Format(LocalizationKey.READ_CARD_COST, cost);
++			}
++		}
 +
 +        private string GetResources()
 +        {
@@ -2097,7 +2112,23 @@ index 0000000..c49c889
 +            return AccessibleCardUtils.GetRarity(m_card.GetEntity().GetEntityDef());
 +        }
 +
-+        internal string GetName()
++        private List<string> GetHeader()
++		{
++            var ret = new List<string>();
++
++            var name = GetName();
++
++            ret.Add(name);
++
++            if (IsCursed(m_card.GetEntity()))
++			{
++                ret.Add(LocalizationUtils.Get(LocalizationKey.GLOBAL_CURSED));
++			}
++
++            return ret;
++		}
++
++        private string GetName()
 +        {
 +            if (m_card.GetEntity().IsHero() && m_card.GetEntity().GetZone() == TAG_ZONE.PLAY)
 +            {
@@ -2161,6 +2192,16 @@ index 0000000..c49c889
 +            return entity.IsSilenced();
 +		}
 +
++		internal static bool IsCursed(Entity entity)
++		{
++            if (entity == null)
++			{
++                return false;
++			}
++
++            return entity.HasTag(GAME_TAG.EVIL_GLOW);
++		}
++
 +		internal Card GetCard()
 +        {
 +            return m_card;
@@ -2169,10 +2210,10 @@ index 0000000..c49c889
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleCardUtils.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCardUtils.cs
 new file mode 100644
-index 0000000..0ca7a4e
+index 0000000..b779dc4
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleCardUtils.cs
-@@ -0,0 +1,260 @@
+@@ -0,0 +1,265 @@
 +﻿using System;
 +using System.Collections.Generic;
 +
@@ -2430,6 +2471,11 @@ index 0000000..0ca7a4e
 +			}
 +
 +            return show;
++		}
++
++		internal static bool HasHiddenStats(Entity card)
++		{
++            return card.HasTag(GAME_TAG.HIDE_STATS);
 +		}
 +	}
 +}
@@ -3120,10 +3166,10 @@ index 0000000..9259009
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleGameplay.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleGameplay.cs
 new file mode 100644
-index 0000000..0c4645d
+index 0000000..e45ae30
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleGameplay.cs
-@@ -0,0 +1,2354 @@
+@@ -0,0 +1,2404 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Text;
@@ -3429,6 +3475,10 @@ index 0000000..0c4645d
 +            {
 +                m_curPhase = AccessibleGamePhase.GAME_OVER;
 +            }
++            else if (GameState.Get().IsMulliganPhasePending())
++			{
++                m_curPhase = AccessibleGamePhase.WAITING_FOR_GAME_TO_START;
++			}
 +            else if (GameState.Get().IsGameCreated())
 +            {
 +                m_curPhase = AccessibleGamePhase.PLAYING;
@@ -3579,9 +3629,11 @@ index 0000000..0c4645d
 +                    HandleHistoryInput();
 +                    return;
 +                case AccessibleGameState.SUB_OPTION_MODE:
++                    HandleCheckStatusKeys();
 +                    HandleSubOptionMode();
 +                    return;
 +                case AccessibleGameState.CHOICE_MODE:
++                    HandleCheckStatusKeys();
 +                    HandleChoiceMode();
 +                    return;
 +                case AccessibleGameState.TARGET_MODE:
@@ -4125,6 +4177,7 @@ index 0000000..0c4645d
 +            if (!m_playerTurn)
 +            {
 +                m_curState = AccessibleGameState.OPPONENT_TURN;
++                m_sendingAllMinionsToFace = false;
 +            } 
 +            else if (m_sendingAllMinionsToFace)
 +            {
@@ -4292,11 +4345,6 @@ index 0000000..0c4645d
 +
 +            if (AccessibleKey.READ_ORIGINAL_CARD_STATS.IsPressed() && m_cardBeingRead.GetCard().GetEntity().IsMinion())
 +            {
-+                var atk = m_cardBeingRead.GetCard().GetEntity().GetEntityDef().GetATK();
-+                var hp = m_cardBeingRead.GetCard().GetEntity().GetEntityDef().GetHealth();
-+
-+                AccessibilityMgr.Output(this, LocalizationUtils.Format(LocalizationKey.READ_CARD_ATK_HEALTH, atk, hp));
-+
 +                ReadBigCard();
 +            }
 +            else
@@ -4307,9 +4355,20 @@ index 0000000..0c4645d
 +
 +        private void ReadBigCard()
 +        {
++            ReadBigCardStats();
++
 +            var bigCard = BigCard.Get();
 +            if (bigCard != null && bigCard.GetCard() != null && bigCard.isActiveAndEnabled)
 +            {
++                // Banner (e.g. turns until this revives: 2 on BoH valeera 5)
++                var bannerText = bigCard.m_enchantmentBanner?.m_EnchantmentBannerText;
++
++                if (bannerText?.gameObject.activeInHierarchy ?? false)
++				{
++                    AccessibilityMgr.Output(this, bannerText.Text);
++				}
++
++                // Normal enchantments
 +                var enchantments = bigCard.m_enchantmentBanner?.m_enchantmentPool?.GetActiveList();
 +                foreach (var enchantment in enchantments)
 +                {
@@ -4320,7 +4379,23 @@ index 0000000..0c4645d
 +            }
 +        }
 +
-+        private void SeeOpponentMinions()
++		private void ReadBigCardStats()
++		{
++            var entity = m_cardBeingRead.GetCard().GetEntity();
++
++            if (AccessibleCardUtils.HasHiddenStats(entity))
++			{
++                // e.g. BoH Valeera 06
++                return;
++			}
++
++			var atk = entity.GetEntityDef().GetATK();
++			var hp = entity.GetEntityDef().GetHealth();
++
++			AccessibilityMgr.Output(this, LocalizationUtils.Format(LocalizationKey.READ_CARD_ATK_HEALTH, atk, hp));
++		}
++
++		private void SeeOpponentMinions()
 +        {
 +            var opponentMinions = GameState.Get().GetOpposingSidePlayer().GetBattlefieldZone();
 +
@@ -4751,8 +4826,29 @@ index 0000000..0c4645d
 +            {
 +                if (!card.IsMousedOver())
 +                {
-+                    AccessibleInputMgr.MoveMouseTo(card.GetActor().m_manaObject.transform);
-+                }
++                    // Note: All of this code was added to trace a rare edge case some players have fallen into with cards such as shadowstep.
++                    // I haven't been able to reproduce so far but I think the bug has something to do with a NPE somewhere in the actor/manaObject chain
++                    // TODO: Clean all of this up once the bug is detected/fixed
++                    try
++					{
++						AccessibleInputMgr.MoveMouseTo(card.GetActor().m_manaObject.transform);
++					}
++                    catch(Exception e)
++					{
++                        AccessibilityUtils.LogFatalError(e);
++                        AccessibilityUtils.LogFatalError($"card.GetActor(): {card.GetActor()}");
++                        AccessibilityUtils.LogFatalError($"card.GetActor()?.m_manaObject: {card.GetActor()?.m_manaObject}");
++                        AccessibilityUtils.LogFatalError($"card.GetActor()?.m_manaObject?.transform: {card.GetActor()?.m_manaObject?.transform}");
++                        AccessibilityUtils.LogFatalError($"card.GetEntity()?.GetCardId(): {card.GetEntity()?.GetCardId()}");
++
++                        if (card.GetActor() != null)
++						{
++                            if (card.GetActor().m_attackObject?.transform != null) AccessibleInputMgr.MoveMouseTo(card.GetActor().m_attackObject.transform);
++                            else if (card.GetActor().m_healthObject?.transform != null) AccessibleInputMgr.MoveMouseTo(card.GetActor().m_healthObject.transform);
++                            else AccessibilityUtils.LogFatalError("Unable to recover - Aborting MoveMouseToCard");
++						}
++                    }
++				}
 +            }
 +            else
 +            {
@@ -6233,10 +6329,10 @@ index 0000000..c4c434b
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleInGameState.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleInGameState.cs
 new file mode 100644
-index 0000000..03a622d
+index 0000000..dfc65b7
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleInGameState.cs
-@@ -0,0 +1,2051 @@
+@@ -0,0 +1,2090 @@
 +﻿using Assets;
 +using System;
 +using System.Collections.Generic;
@@ -6617,6 +6713,12 @@ index 0000000..03a622d
 +                    sDescriptions.Add(LocalizationUtils.Get(LocalizationKey.GAMEPLAY_DIFF_ENTITY_BECAME_INVULNERABLE));
 +                    pDescriptions.Add(LocalizationUtils.Get(LocalizationKey.GAMEPLAY_DIFF_MULTIPLE_ENTITIES_BECAME_INVULNERABLE));
 +                }
++
++                if (!AccessibleCard.IsCursed(m_before) && AccessibleCard.IsCursed(m_after)) 
++				{
++                    sDescriptions.Add(LocalizationUtils.Get(LocalizationKey.GAMEPLAY_DIFF_ENTITY_WAS_CURSED));
++                    pDescriptions.Add(LocalizationUtils.Get(LocalizationKey.GAMEPLAY_DIFF_MULTIPLE_ENTITIES_WERE_CURSED));
++				}
 +
 +                if (!m_before.IsSilenced() && m_after.IsSilenced())
 +                {
@@ -7115,10 +7217,20 @@ index 0000000..03a622d
 +            var handled = new Dictionary<Entity, bool>(new EntityComparer());
 +            var entities = new List<Entity>(entityDiffs.Count);
 +
-+            entityDiffs.ForEach(e => entities.Add(e.GetBeforeEntity()));
-+            entityDiffs.ForEach(e => handled.Add(e.GetBeforeEntity(), false));
++			// TODO: Refactor this entire thing properly to use EntityDiffs instead of Entities as we don't always want to necessarily use the before entity
++            // e.g. x transformed into y should use before
++            //      x moved from deck to battlefield should use after (since before will still be invalid)
++            //      x died should use before (to differentiate e.g. your 2nd murloc died vs your murloc died or even your tenth murloc died if you already had 9 in GY)
++			var beforeEntityToAfterEntity = new Dictionary<Entity, Entity>(new EntityComparer());
 +
-+            var groupedSpeeches = new Dictionary<string, EntitySpeech>();
++			entityDiffs.ForEach(e =>
++			{
++				entities.Add(e.GetBeforeEntity());
++				handled.Add(e.GetBeforeEntity(), false);
++				beforeEntityToAfterEntity.Add(e.GetBeforeEntity(), e.GetAfterEntity());
++			});
++
++			var groupedSpeeches = new Dictionary<string, EntitySpeech>();
 +
 +            AccessibilityUtils.LogDebug("DBG Grouping speeches");
 +            AccessibilityUtils.LogDebug($"DBG entities: {GetEntityNamesDbg(entities)}");
@@ -7151,6 +7263,7 @@ index 0000000..03a622d
 +            {
 +                if (entitySpeeches.ContainsKey(e))
 +                {
++
 +                    // Only add if we have proper changes (e.g. being destroyed does not warrant a speech as it would be covered by death anyways)
 +                    if (useZoneOrder)
 +                    {
@@ -7158,9 +7271,22 @@ index 0000000..03a622d
 +                    }
 +                    else
 +                    {
-+                        // e.g. Death speeches (since we may have more than one in graveyard)
-+                        remainingSpeeches.Add(GetFullNameInList(e, remainingEntities), entitySpeeches[e]);
-+                    }
++						// e.g. Death speeches (since we may have more than one in graveyard)
++                        // e.g. move from deck to battlefield speeches
++
++						var afterEntity = beforeEntityToAfterEntity[e]; // TODO: Refactor everything to use EntityDiffs. See above
++
++                        if (e.GetCardType() == TAG_CARDTYPE.INVALID && afterEntity.GetCardType() != TAG_CARDTYPE.INVALID)
++						{
++                            // e.g. deck->battlefield (after is ok / before is still invalid)
++                            // This is a mess but can't fix it properly until all of this is refactored to use EntityDiffs instead of entities
++							remainingSpeeches.Add(GetFullName(afterEntity), entitySpeeches[e]);
++						}
++                        else
++						{
++							remainingSpeeches.Add(GetFullNameInList(e, remainingEntities), entitySpeeches[e]);
++						}
++					}
 +                }
 +            });
 +
@@ -7591,7 +7717,16 @@ index 0000000..03a622d
 +                    }
 +                    else if (beforeZone == opponentDeck && afterZone == opponentHand)
 +                    {
-+                        var cardName = GetCardNameForZoneMovement(after);
++						var cardName = LocalizationUtils.Get(LocalizationKey.GLOBAL_CARD);
++
++                        if (after.IsRevealed())
++						{
++							// Tradeable and shuffled cards reuse the same ID for some reason which means the client knows what the opponent is drawing
++							// This should be handled server-side but until then (if ever), handling any card without a specific REVEALED tag as a
++							// unknown card draw should work
++							cardName = GetCardNameForZoneMovement(after);
++						}
++
 +                        drawnOpponentCards.Add(cardName);
 +                    }
 +                    else if ((beforeZone == playerMinions || beforeZone == playerSecrets) && afterZone == playerHand)
@@ -10356,10 +10491,10 @@ index 0000000..a2fd21e
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessiblePlayDescriber.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessiblePlayDescriber.cs
 new file mode 100644
-index 0000000..bb25da1
+index 0000000..de1f77b
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessiblePlayDescriber.cs
-@@ -0,0 +1,523 @@
+@@ -0,0 +1,525 @@
 +﻿using Assets;
 +using System;
 +using System.Collections.Generic;
@@ -10567,22 +10702,16 @@ index 0000000..bb25da1
 +
 +        private bool IsCardTrade(PowerTaskList taskList)
 +        {
-+            if (taskList == null || !taskList.IsOrigin() || !taskList.IsPlayBlock())
++            if (taskList == null || !taskList.IsOrigin() || !taskList.IsTradeBlock())
 +            {
 +                return false;
 +            }
 +
 +            var source = taskList.GetSourceEntity();
-+            var target = taskList.GetTargetEntity();
 +
-+            if (source == null || target == null)
++            if (source == null)
 +            {
-+                return false;
-+            }
-+
-+            if (source.GetEntityId() != target.GetEntityId())
-+            {
-+                return false;
++				return false;
 +            }
 +
 +            foreach (var task in taskList.GetTaskList())
@@ -10625,8 +10754,16 @@ index 0000000..bb25da1
 +                }
 +                else
 +                {
-+                    play = LocalizationUtils.Format(LocalizationKey.GAMEPLAY_OPPONENT_SUMMONED_MINION_BIG_CARD, cardName, atk, hp, cardText);
-+                }
++                    if (!AccessibleCardUtils.HasHiddenStats(card))
++					{
++						play = LocalizationUtils.Format(LocalizationKey.GAMEPLAY_OPPONENT_SUMMONED_MINION_BIG_CARD, cardName, atk, hp, cardText);
++					}
++                    else
++					{
++                        // e.g. BoH Valeera 08 (Silent Shadows)
++						play = LocalizationUtils.Format(LocalizationKey.GAMEPLAY_OPPONENT_SUMMONED_MINION_BIG_CARD, cardName, "", "", cardText);
++					}
++				}
 +            }
 +            else if (card.IsSpell())
 +            {
@@ -14773,10 +14910,10 @@ index 0000000..8d8eab0
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/CollectionManager/AccessibleCollectionManager.cs b/Decompiled/Assembly-CSharp/Accessibility/CollectionManager/AccessibleCollectionManager.cs
 new file mode 100644
-index 0000000..b3f6ad6
+index 0000000..61f8f16
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/CollectionManager/AccessibleCollectionManager.cs
-@@ -0,0 +1,1673 @@
+@@ -0,0 +1,1855 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using UnityEngine;
@@ -14849,6 +14986,11 @@ index 0000000..b3f6ad6
 +
 +        internal void OnCollectionManagerOpened()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            m_curState = State.LOADING;
 +            m_stateBeforeViewCard = State.LOADING;
 +            m_waitingForServerResponse = false;
@@ -14858,7 +15000,13 @@ index 0000000..b3f6ad6
 +            AccessibilityMgr.SetScreen(this);
 +        }
 +
-+        private void HandlePageInput()
++		private bool IsSupportedCollectionManager()
++		{
++            // BG and Mercenaries CMs are not supported - break so players using OCR or being helped by sighted players can still access them if they'd like
++            return SceneMgr.Get().GetMode() == SceneMgr.Mode.COLLECTIONMANAGER;
++		}
++
++		private void HandlePageInput()
 +        {
 +            HandlePageInput(m_curPageCards);
 +        }
@@ -14916,11 +15064,21 @@ index 0000000..b3f6ad6
 +
 +		internal void OnCancelDisenchantPopup()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            m_justCanceledDisenchantPopup = true;
 +		}
 +
 +		internal void OnPageChanged(int curPageNum, List<CollectibleCard> cardsToDisplay, List<CollectionCardActors> cardActors)
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityUtils.LogDebug("CM OnPageChanged");
 +            AccessibilityUtils.LogDebug($"CM curPageNum {curPageNum}");
 +            AccessibilityUtils.LogDebug($"CM cardsToDisplay {cardsToDisplay.Count}");
@@ -14991,6 +15149,11 @@ index 0000000..b3f6ad6
 +
 +		internal void OnCardBacksPageChanged(int curPageNum, List<CollectionCardActors> cardActors)
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityUtils.LogDebug("CM OnCardBacksPageChanged");
 +            AccessibilityUtils.LogDebug($"CM curPageNum {curPageNum}");
 +
@@ -15029,6 +15192,11 @@ index 0000000..b3f6ad6
 +
 +		internal void OnShowNoMatchesFound(string key)
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            var text = GameStrings.Get(key);
 +            m_curPageCards = new AccessibleListOfItems<AccessibleCollectibleCard>(this, new List<AccessibleCollectibleCard>(), text);
 +            m_curPageCards.StartReading();
@@ -15072,19 +15240,35 @@ index 0000000..b3f6ad6
 +
 +        internal void OnCollectionManagerClosed()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityUtils.LogDebug("CM OnCollectionManagerClosed");
 +            AccessibilityMgr.TransitioningScreens();
 +        }
 +
 +        internal void OnCollectibleDisplayReady()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityUtils.LogDebug("CM OnCollectibleDisplayReady");
++            AccessibilityUtils.LogDebug($"{SceneMgr.Get().GetMode()}");
 +
 +            SetupMainMenu();
 +        }
 +
 +		internal void OnChangeViewMode(CollectionUtils.ViewMode prevMode, CollectionUtils.ViewMode curMode)
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            if (prevMode == CollectionUtils.ViewMode.MASS_DISENCHANT && curMode == CollectionUtils.ViewMode.CARDS)
 +			{
 +                MassDisenchant.Get()?.HideThis();
@@ -15095,6 +15279,11 @@ index 0000000..b3f6ad6
 +
 +		public void HandleInput()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            switch (m_curState)
 +            {
 +                case State.BROWSING_CARDS:
@@ -15359,6 +15548,11 @@ index 0000000..b3f6ad6
 +
 +		internal void OnSelectFilterItem()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            s_justOutOfSetFilterTray = true;
 +
 +            if (m_curState == State.MAIN_MENU)
@@ -15688,6 +15882,11 @@ index 0000000..b3f6ad6
 +
 +        internal void OnFinishRenamingDeck()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityMgr.DisallowTextInput();
 +
 +            if (m_curState == State.EDIT_DECK_RENAME_DECK)
@@ -15935,6 +16134,11 @@ index 0000000..b3f6ad6
 +
 +        internal void OnEditDeckScreen()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            // Just wait if we're creating from clipboard as it'll switch back once the cards fill
 +            if (m_curState != State.CREATE_DECK_FROM_CLIPBOARD)
 +            {
@@ -16017,16 +16221,31 @@ index 0000000..b3f6ad6
 +
 +        internal void OnCraftingTrayOpened()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            SetupCraftingMenu();
 +		}
 +
 +        internal void OnCraftingTrayClosed()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            RereadMainMenu();
 +		}
 +
 +		internal void OnEnterCraftMode(CardInfoPane cardInfoPane, CraftingUI craftingUI)
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            m_cardInfoPane = cardInfoPane;
 +            m_craftingUI = craftingUI;
 +            PushState();
@@ -16127,6 +16346,11 @@ index 0000000..b3f6ad6
 +
 +		internal void OnCancelCraftMode(CardInfoPane cardInfoPane, CraftingUI craftingUI)
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            m_cardInfoPane = null;
 +            m_craftingUI = null;
 +
@@ -16135,21 +16359,41 @@ index 0000000..b3f6ad6
 +
 +		internal void OnCreateAnimStarted()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            m_curState = State.LOADING;
 +		}
 +
 +		internal void OnCreateAnimDone()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            CommitCrafting();
 +		}
 +
 +		internal void OnDisenchantAnimStarted()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            m_curState = State.LOADING;
 +		}
 +
 +		internal void OnDisenchantAnimDone()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            CommitCrafting();
 +		}
 +
@@ -16161,12 +16405,22 @@ index 0000000..b3f6ad6
 +
 +		internal void OnMassDisenchantAnimStarted()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityUtils.LogDebug($"OnMassDisenchantAnimStarted() m_curState={m_curState}");
 +            m_curState = State.LOADING;
 +		}
 +
 +		internal void OnMassDisenchantAnimDone()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityUtils.LogDebug($"OnMassDisenchantAnimDone() m_curState={m_curState}");
 +            CraftingTray.Get().m_massDisenchantButton.TriggerRelease();
 +
@@ -16177,6 +16431,11 @@ index 0000000..b3f6ad6
 +
 +		internal void OnCardCreated()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityMgr.Output(this, LocalizationUtils.Get(LocalizationKey.SCREEN_COLLECTION_MANAGER_CRAFTING_CRAFT_CARD_DONE));
 +
 +            // The reread is handled by the normal flow as the server response triggers it
@@ -16185,6 +16444,11 @@ index 0000000..b3f6ad6
 +
 +		internal void OnCardDisenchanted()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityUtils.LogDebug($"OnCardDisenchanted");
 +            AccessibilityMgr.Output(this, LocalizationUtils.Get(LocalizationKey.SCREEN_COLLECTION_MANAGER_CRAFTING_DISENCHANT_DONE));
 +
@@ -16220,6 +16484,11 @@ index 0000000..b3f6ad6
 +
 +        public void OnGainedFocus()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +			if (m_curState == State.MAIN_MENU)
 +            {
 +                if (s_justOutOfSetFilterTray)
@@ -16276,6 +16545,11 @@ index 0000000..b3f6ad6
 +
 +		public string GetHelp()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return "";
++			}
++
 +            switch(m_curState)
 +            {
 +                case State.MAIN_MENU:
@@ -16319,6 +16593,11 @@ index 0000000..b3f6ad6
 +
 +        internal void OnFinishingDeckAutoFill()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            m_curState = State.LOADING;
 +        }
 +
@@ -16354,6 +16633,11 @@ index 0000000..b3f6ad6
 +
 +        internal void OnDeleteDeckCanceled()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            m_deleteDecksMenu?.StartReading();
 +        }
 +
@@ -16392,11 +16676,21 @@ index 0000000..b3f6ad6
 +
 +        internal void OnCreateDeckFromClipboard()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            m_curState = State.CREATE_DECK_FROM_CLIPBOARD;
 +        }
 +
 +        internal void OnFinishAutoAddCardsWithTiming()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            if (m_curState == State.CREATE_DECK_FROM_CLIPBOARD)
 +            {
 +                AccessibilityMgr.SetScreen(this);
@@ -16406,6 +16700,11 @@ index 0000000..b3f6ad6
 +
 +        internal bool IsCreatingDeckFromClipboard()
 +        {
++            if (!IsSupportedCollectionManager())
++			{
++                return false;
++			}
++
 +            return m_curState == State.CREATE_DECK_FROM_CLIPBOARD;
 +        }
 +
@@ -16413,18 +16712,33 @@ index 0000000..b3f6ad6
 +
 +		internal void OnFavoriteHeroSkinChanged()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityMgr.Output(this, LocalizationUtils.Get(LocalizationKey.SCREEN_COLLECTION_MANAGER_FAVORITE_HERO_SKIN_SET));
 +            RereadAfterServerResponse(m_curPageCards);
 +		}
 +
 +		internal void OnFavoriteCardBackChanged()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityMgr.Output(this, LocalizationUtils.Get(LocalizationKey.SCREEN_COLLECTION_MANAGER_FAVORITE_CARD_BACK_SET));
 +            RereadAfterServerResponse(m_curPageCardBacks);
 +		}
 +
 +		internal void OnFavoriteCoinChanged()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityMgr.Output(this, LocalizationUtils.Get(LocalizationKey.SCREEN_COLLECTION_MANAGER_FAVORITE_COIN_SET));
 +            RereadAfterServerResponse(m_curPageCards);
 +		}
@@ -16433,6 +16747,11 @@ index 0000000..b3f6ad6
 +
 +		internal void WaitingForServerResponse()
 +		{
++            if (!IsSupportedCollectionManager())
++			{
++                return;
++			}
++
 +            AccessibilityUtils.LogDebug("WaitingForServerResponse()");
 +            m_waitingForServerResponse = true;
 +		}
@@ -17219,7 +17538,7 @@ index 0000000..9473d38
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 0000000..4e6d8bd
+index 0000000..4cf6d8b
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -17231,7 +17550,7 @@ index 0000000..4e6d8bd
 +    {
 +        public static string HEARTHSTONE_VERSION = "21.8.0.126451";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "16";
++        public static string HEARTHSTONE_ACCESS_VERSION = "17";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -18089,10 +18408,10 @@ index 0000000..63cbf4b
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizationKey.cs b/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizationKey.cs
 new file mode 100644
-index 0000000..af9c32c
+index 0000000..e9b1a72
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/Localization/LocalizationKey.cs
-@@ -0,0 +1,905 @@
+@@ -0,0 +1,908 @@
 +﻿using System;
 +using System.Collections.Generic;
 +using System.Linq;
@@ -18220,6 +18539,7 @@ index 0000000..af9c32c
 +    public static LocalizationKey GLOBAL_DORMANT = CreateKey("GLOBAL_KEYWORD_DORMANT");
 +    public static LocalizationKey GLOBAL_ENCHANTMENT = CreateKey("GLOBAL_CARDTYPE_ENCHANTMENT");
 +    public static LocalizationKey GLOBAL_SILENCE = CreateKey("GLOBAL_KEYWORD_SILENCE");
++    public static LocalizationKey GLOBAL_CURSED = CreateKey("ACCESSIBILITY_GLOBAL_KEYWORD_CURSED");
 +
 +    // Gameplay
 +    public static LocalizationKey GAMEPLAY_YOUR_TURN = CreateKey("GAMEPLAY_YOUR_TURN");
@@ -18359,6 +18679,8 @@ index 0000000..af9c32c
 +    public static LocalizationKey GAMEPLAY_DIFF_MULTIPLE_ENTITIES_RECOVERED_N_HEALTH = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_MULTIPLE_ENTITIES_RECOVERED_N_HEALTH");
 +    public static LocalizationKey GAMEPLAY_DIFF_ENTITY_BECAME_INVULNERABLE = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_ENTITY_BECAME_INVULNERABLE");
 +    public static LocalizationKey GAMEPLAY_DIFF_MULTIPLE_ENTITIES_BECAME_INVULNERABLE = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_MULTIPLE_ENTITIES_BECAME_INVULNERABLE");
++    public static LocalizationKey GAMEPLAY_DIFF_ENTITY_WAS_CURSED = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_ENTITY_WAS_CURSED");
++    public static LocalizationKey GAMEPLAY_DIFF_MULTIPLE_ENTITIES_WERE_CURSED = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_MULTIPLE_ENTITIES_WERE_CURSED");
 +    public static LocalizationKey GAMEPLAY_DIFF_ENTITY_BECAME_SILENCED = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_ENTITY_BECAME_SILENCED");
 +    public static LocalizationKey GAMEPLAY_DIFF_MULTIPLE_ENTITIES_BECAME_SILENCED = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_MULTIPLE_ENTITIES_BECAME_SILENCED");
 +    public static LocalizationKey GAMEPLAY_DIFF_ENTITY_BECAME_DORMANT = CreateKey("ACCESSIBILITY_GAMEPLAY_DIFF_ENTITY_BECAME_DORMANT");
@@ -25611,7 +25933,7 @@ index d21968c..cfe2e66 100644
  		{
  			return false;
 diff --git a/Decompiled/Assembly-CSharp/BoH_Guldan_01.cs b/Decompiled/Assembly-CSharp/BoH_Guldan_01.cs
-index bebf08d..f8fd035 100644
+index bebf08d..a7d6890 100644
 --- a/Decompiled/Assembly-CSharp/BoH_Guldan_01.cs
 +++ b/Decompiled/Assembly-CSharp/BoH_Guldan_01.cs
 @@ -52,8 +52,6 @@ public class BoH_Guldan_01 : BoH_Guldan_Dungeon
@@ -25623,7 +25945,7 @@ index bebf08d..f8fd035 100644
  	private MineCartRushArt m_mineCartArt;
  
  	private static Map<GameEntityOption, bool> InitBooleanOptions()
-@@ -259,46 +257,13 @@ public class BoH_Guldan_01 : BoH_Guldan_Dungeon
+@@ -259,46 +257,19 @@ public class BoH_Guldan_01 : BoH_Guldan_Dungeon
  	public override void NotifyOfMulliganEnded()
  	{
  		base.NotifyOfMulliganEnded();
@@ -25634,7 +25956,13 @@ index bebf08d..f8fd035 100644
 -	{
 -		int cost = GetCost();
 -		InitTurnCounter(cost);
-+		InitTurnCounterVisuals();
++		InitTurnCounterVisuals(
++			turnCounterKey: "BOH_GULDAN_01",
++			fsmRunningManVal: true,
++			fsmMineCartVal: false,
++			fsmAirshipVal: false,
++			fsmDestroyerVal: false
++		);
  	}
  
  	public override void OnTagChanged(TagDelta change)
@@ -25672,7 +26000,7 @@ index bebf08d..f8fd035 100644
  	}
  
  	private void UpdateMineCartArt()
-@@ -307,31 +272,4 @@ public class BoH_Guldan_01 : BoH_Guldan_Dungeon
+@@ -307,31 +278,4 @@ public class BoH_Guldan_01 : BoH_Guldan_Dungeon
  			.GetActor();
  		m_mineCartArt.DoPortraitSwap(actor);
  	}
@@ -25705,7 +26033,7 @@ index bebf08d..f8fd035 100644
 -	}
  }
 diff --git a/Decompiled/Assembly-CSharp/BoH_Guldan_06.cs b/Decompiled/Assembly-CSharp/BoH_Guldan_06.cs
-index c6026b4..6417ac0 100644
+index c6026b4..b1603cb 100644
 --- a/Decompiled/Assembly-CSharp/BoH_Guldan_06.cs
 +++ b/Decompiled/Assembly-CSharp/BoH_Guldan_06.cs
 @@ -56,8 +56,6 @@ public class BoH_Guldan_06 : BoH_Guldan_Dungeon
@@ -25717,7 +26045,7 @@ index c6026b4..6417ac0 100644
  	private MineCartRushArt m_mineCartArt;
  
  	private static Map<GameEntityOption, bool> InitBooleanOptions()
-@@ -266,46 +264,13 @@ public class BoH_Guldan_06 : BoH_Guldan_Dungeon
+@@ -266,46 +264,19 @@ public class BoH_Guldan_06 : BoH_Guldan_Dungeon
  	public override void NotifyOfMulliganEnded()
  	{
  		base.NotifyOfMulliganEnded();
@@ -25728,7 +26056,13 @@ index c6026b4..6417ac0 100644
 -	{
 -		int cost = GetCost();
 -		InitTurnCounter(cost);
-+		InitTurnCounterVisuals();
++		InitTurnCounterVisuals(
++			turnCounterKey: "BOH_GULDAN_01",
++			fsmRunningManVal: true,
++			fsmMineCartVal: false,
++			fsmAirshipVal: false,
++			fsmDestroyerVal: false
++		);
  	}
  
  	public override void OnTagChanged(TagDelta change)
@@ -25766,7 +26100,7 @@ index c6026b4..6417ac0 100644
  	}
  
  	private void UpdateMineCartArt()
-@@ -314,31 +279,4 @@ public class BoH_Guldan_06 : BoH_Guldan_Dungeon
+@@ -314,31 +285,4 @@ public class BoH_Guldan_06 : BoH_Guldan_Dungeon
  			.GetActor();
  		m_mineCartArt.DoPortraitSwap(actor);
  	}
@@ -25799,7 +26133,7 @@ index c6026b4..6417ac0 100644
 -	}
  }
 diff --git a/Decompiled/Assembly-CSharp/BoH_Illidan_08.cs b/Decompiled/Assembly-CSharp/BoH_Illidan_08.cs
-index 0efae65..2c4f170 100644
+index 0efae65..8772bff 100644
 --- a/Decompiled/Assembly-CSharp/BoH_Illidan_08.cs
 +++ b/Decompiled/Assembly-CSharp/BoH_Illidan_08.cs
 @@ -80,8 +80,6 @@ public class BoH_Illidan_08 : BoH_Illidan_Dungeon
@@ -25811,16 +26145,22 @@ index 0efae65..2c4f170 100644
  	private MineCartRushArt m_mineCartArt;
  
  	private static Map<GameEntityOption, bool> InitBooleanOptions()
-@@ -196,7 +194,7 @@ public class BoH_Illidan_08 : BoH_Illidan_Dungeon
+@@ -196,7 +194,13 @@ public class BoH_Illidan_08 : BoH_Illidan_Dungeon
  			yield return MissionPlayVOOnce(enemyActor, m_InGame_BossUsesHeroPowerLines);
  			break;
  		case 105:
 -			InitVisuals();
-+			InitTurnCounterVisuals();
++			InitTurnCounterVisuals(
++				turnCounterKey: "BOH_ILLIDAN_08",
++				fsmRunningManVal: false,
++				fsmMineCartVal: false,
++				fsmAirshipVal: false,
++				fsmDestroyerVal: true
++			);
  			GameState.Get().GetOpposingSidePlayer().UpdateDisplayInfo();
  			Gameplay.Get().GetNameBannerForSide(Player.Side.OPPOSING).UpdateHeroNameBanner();
  			break;
-@@ -344,43 +342,10 @@ public class BoH_Illidan_08 : BoH_Illidan_Dungeon
+@@ -344,43 +348,10 @@ public class BoH_Illidan_08 : BoH_Illidan_Dungeon
  		}
  	}
  
@@ -25865,7 +26205,7 @@ index 0efae65..2c4f170 100644
  	}
  
  	private void UpdateMineCartArt()
-@@ -389,31 +354,4 @@ public class BoH_Illidan_08 : BoH_Illidan_Dungeon
+@@ -389,31 +360,4 @@ public class BoH_Illidan_08 : BoH_Illidan_Dungeon
  			.GetActor();
  		m_mineCartArt.DoPortraitSwap(actor);
  	}
@@ -25919,7 +26259,7 @@ index 6dc59e8..b863557 100644
  			break;
  		case 5:
 diff --git a/Decompiled/Assembly-CSharp/BoH_Uther_08.cs b/Decompiled/Assembly-CSharp/BoH_Uther_08.cs
-index 03a8744..5656764 100644
+index 03a8744..3612e51 100644
 --- a/Decompiled/Assembly-CSharp/BoH_Uther_08.cs
 +++ b/Decompiled/Assembly-CSharp/BoH_Uther_08.cs
 @@ -46,8 +46,6 @@ public class BoH_Uther_08 : BoH_Uther_Dungeon
@@ -25931,7 +26271,7 @@ index 03a8744..5656764 100644
  	private MineCartRushArt m_mineCartArt;
  
  	private static Map<GameEntityOption, bool> InitBooleanOptions()
-@@ -228,46 +226,13 @@ public class BoH_Uther_08 : BoH_Uther_Dungeon
+@@ -228,46 +226,19 @@ public class BoH_Uther_08 : BoH_Uther_Dungeon
  	public override void NotifyOfMulliganEnded()
  	{
  		base.NotifyOfMulliganEnded();
@@ -25942,7 +26282,13 @@ index 03a8744..5656764 100644
 -	{
 -		int cost = GetCost();
 -		InitTurnCounter(cost);
-+		InitTurnCounterVisuals();
++		InitTurnCounterVisuals(
++			turnCounterKey: "BOH_UTHER_08",
++			fsmRunningManVal: true,
++			fsmMineCartVal: false,
++			fsmAirshipVal: false,
++			fsmDestroyerVal: false
++		);
  	}
  
  	public override void OnTagChanged(TagDelta change)
@@ -25980,7 +26326,7 @@ index 03a8744..5656764 100644
  	}
  
  	private void UpdateMineCartArt()
-@@ -277,33 +242,6 @@ public class BoH_Uther_08 : BoH_Uther_Dungeon
+@@ -277,33 +248,6 @@ public class BoH_Uther_08 : BoH_Uther_Dungeon
  		m_mineCartArt.DoPortraitSwap(actor);
  	}
  
@@ -26014,6 +26360,109 @@ index 03a8744..5656764 100644
  	public override void StartGameplaySoundtracks()
  	{
  		MusicManager.Get().StartPlaylist(MusicPlaylistType.InGame_ICCLichKing);
+diff --git a/Decompiled/Assembly-CSharp/BoH_Valeera_08.cs b/Decompiled/Assembly-CSharp/BoH_Valeera_08.cs
+index 8a0f0ee..c68eba4 100644
+--- a/Decompiled/Assembly-CSharp/BoH_Valeera_08.cs
++++ b/Decompiled/Assembly-CSharp/BoH_Valeera_08.cs
+@@ -54,8 +54,6 @@ public class BoH_Valeera_08 : BoH_Valeera_Dungeon
+ 
+ 	private HashSet<string> m_playedLines = new HashSet<string>();
+ 
+-	private Notification m_turnCounter;
+-
+ 	private MineCartRushArt m_mineCartArt;
+ 
+ 	public override void PreloadAssets()
+@@ -270,46 +268,21 @@ public class BoH_Valeera_08 : BoH_Valeera_Dungeon
+ 	public override void NotifyOfMulliganEnded()
+ 	{
+ 		base.NotifyOfMulliganEnded();
+-		InitVisuals();
+-	}
+ 
+-	private void InitVisuals()
+-	{
+-		int cost = GetCost();
+-		InitTurnCounter(cost);
++		// Note: This isn't really a turn-based encounter but Blizzard reused most of the componentry.
++		InitTurnCounterVisuals(
++			turnCounterKey: "BOH_VALEERA_08",
++			fsmRunningManVal: true,
++			fsmMineCartVal: false,
++			fsmAirshipVal: false,
++			fsmDestroyerVal: false
++		);
+ 	}
+ 
+ 	public override void OnTagChanged(TagDelta change)
+ 	{
+ 		base.OnTagChanged(change);
+-		GAME_TAG tag = (GAME_TAG)change.tag;
+-		if (tag == GAME_TAG.COST && change.newValue != change.oldValue)
+-		{
+-			UpdateVisuals(change.newValue);
+-		}
+-	}
+-
+-	private void InitTurnCounter(int cost)
+-	{
+-		GameObject gameObject = AssetLoader.Get().InstantiatePrefab("LOE_Turn_Timer.prefab:b05530aa55868554fb8f0c66632b3c22");
+-		m_turnCounter = gameObject.GetComponent<Notification>();
+-		PlayMakerFSM component = m_turnCounter.GetComponent<PlayMakerFSM>();
+-		component.FsmVariables.GetFsmBool("RunningMan").Value = true;
+-		component.FsmVariables.GetFsmBool("MineCart").Value = false;
+-		component.FsmVariables.GetFsmBool("Airship").Value = false;
+-		component.FsmVariables.GetFsmBool("Destroyer").Value = false;
+-		component.SendEvent("Birth");
+-		Actor actor = GameState.Get().GetOpposingSidePlayer().GetHeroCard()
+-			.GetActor();
+-		m_turnCounter.transform.parent = actor.gameObject.transform;
+-		m_turnCounter.transform.localPosition = new Vector3(-1.4f, 0.187f, -0.11f);
+-		m_turnCounter.transform.localScale = Vector3.one * 0.52f;
+-		UpdateTurnCounterText(cost);
+-	}
+-
+-	private void UpdateVisuals(int cost)
+-	{
+-		UpdateTurnCounter(cost);
++		UpdateTurnCounterVisualsIfNeeded(change);
+ 	}
+ 
+ 	private void UpdateMineCartArt()
+@@ -319,33 +292,6 @@ public class BoH_Valeera_08 : BoH_Valeera_Dungeon
+ 		m_mineCartArt.DoPortraitSwap(actor);
+ 	}
+ 
+-	private void UpdateTurnCounter(int cost)
+-	{
+-		m_turnCounter.GetComponent<PlayMakerFSM>().SendEvent("Action");
+-		if (cost <= 0)
+-		{
+-			Object.Destroy(m_turnCounter.gameObject);
+-		}
+-		else
+-		{
+-			UpdateTurnCounterText(cost);
+-		}
+-	}
+-
+-	private void UpdateTurnCounterText(int cost)
+-	{
+-		GameStrings.PluralNumber[] pluralNumbers = new GameStrings.PluralNumber[1]
+-		{
+-			new GameStrings.PluralNumber
+-			{
+-				m_index = 0,
+-				m_number = cost
+-			}
+-		};
+-		string headlineString = GameStrings.FormatPlurals("BOH_VALEERA_08", pluralNumbers);
+-		m_turnCounter.ChangeDialogText(headlineString, cost.ToString(), "", "");
+-	}
+-
+ 	private IEnumerator ShowPopup(string displayString)
+ 	{
+ 		StartPopup = NotificationManager.Get().CreatePopupText(UserAttentionBlocker.NONE, popUpPos, TutorialEntity.GetTextScale(), GameStrings.Get(displayString), convertLegacyPosition: false);
 diff --git a/Decompiled/Assembly-CSharp/Board.cs b/Decompiled/Assembly-CSharp/Board.cs
 index a306f06..1c53c61 100644
 --- a/Decompiled/Assembly-CSharp/Board.cs
@@ -32931,7 +33380,7 @@ index 6177f53..acdc5a7 100644
  			AlertPopup.PopupInfo popupInfo = new AlertPopup.PopupInfo();
  			popupInfo.m_attentionCategory = UserAttentionBlocker.NONE;
 diff --git a/Decompiled/Assembly-CSharp/GuestHeroPickerTrayDisplay.cs b/Decompiled/Assembly-CSharp/GuestHeroPickerTrayDisplay.cs
-index 760d6f8..6e61d40 100644
+index 760d6f8..3cdddf5 100644
 --- a/Decompiled/Assembly-CSharp/GuestHeroPickerTrayDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/GuestHeroPickerTrayDisplay.cs
 @@ -5,9 +5,10 @@ using Hearthstone.DataModels;
@@ -32982,7 +33431,7 @@ index 760d6f8..6e61d40 100644
 +		var menuTitle = LocalizationUtils.Get(LocalizationKey.SCREEN_ADVENTURE_SCREEN_CHOOSE_ADVENTURER_TITLE);
 +		var accessibleHeroPickerButtons = new AccessibleHorizontalMenu<AccessibleHeroPickerButton>(this, menuTitle, PressBackButton);
 +
-+		var numSupportedBoHHeroes = 5; // Jaina, Rexxar, Garrosh, Uther, Anduin
++		var numSupportedBoHHeroes = 6; // Jaina, Rexxar, Garrosh, Uther, Anduin, Valeera
 +
 +		//foreach (var hb in m_heroButtons)
 +		for (var i = 0; i < numSupportedBoHHeroes; i++)
@@ -35251,7 +35700,7 @@ index 9fc8020..5568c6d 100644
  	}
  
 diff --git a/Decompiled/Assembly-CSharp/JoustSpellController.cs b/Decompiled/Assembly-CSharp/JoustSpellController.cs
-index d995418..e43b6e1 100644
+index d995418..5b41fd6 100644
 --- a/Decompiled/Assembly-CSharp/JoustSpellController.cs
 +++ b/Decompiled/Assembly-CSharp/JoustSpellController.cs
 @@ -4,6 +4,7 @@ using System.Collections.Generic;
@@ -35270,7 +35719,7 @@ index d995418..e43b6e1 100644
  		while (IsJousterBusy(m_friendlyJouster) || IsJousterBusy(m_opponentJouster))
  		{
  			yield return null;
-@@ -311,9 +313,21 @@ public class JoustSpellController : SpellController
+@@ -311,9 +313,26 @@ public class JoustSpellController : SpellController
  			DriftJouster(jouster);
  		};
  		iTween.Timer(card.gameObject, iTween.Hash("delay", delaySec, "time", showSec, "oncomplete", action));
@@ -35284,8 +35733,13 @@ index d995418..e43b6e1 100644
 +        }
 +		else
 +        {
-+			OutputSpeech(LocalizationUtils.Format(LocalizationKey.GAMEPLAY_JOUST_OPPONENT_REVEALED_CARD, jousterCost, jousterName));
-+        }
++			if (card.GetEntity().GetCardType() != TAG_CARDTYPE.INVALID)
++			{
++				// Some cards reuse the Joust mechanic even though they're not really Jousts
++				// e.g. Guess the weight when used by the opponent (only the opponent sees the card)
++				OutputSpeech(LocalizationUtils.Format(LocalizationKey.GAMEPLAY_JOUST_OPPONENT_REVEALED_CARD, jousterCost, jousterName));
++			}
++		}
  	}
  
 -	private void PlayNoJousterSpell(Player player)
@@ -35293,7 +35747,7 @@ index d995418..e43b6e1 100644
  	{
  		ZoneDeck deckZone = player.GetDeckZone();
  		Spell spell2 = UnityEngine.Object.Instantiate(m_NoJousterSpellPrefab);
-@@ -326,6 +340,15 @@ public class JoustSpellController : SpellController
+@@ -326,6 +345,15 @@ public class JoustSpellController : SpellController
  			}
  		});
  		spell2.Activate();
@@ -35309,7 +35763,7 @@ index d995418..e43b6e1 100644
  	}
  
  	private void DriftJouster(Jouster jouster)
-@@ -534,4 +557,14 @@ public class JoustSpellController : SpellController
+@@ -534,4 +562,14 @@ public class JoustSpellController : SpellController
  		}
  		return jouster.m_effectsPendingFinish > 0;
  	}
@@ -36264,7 +36718,7 @@ index 7338409..6b332d1 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/MissionEntity.cs b/Decompiled/Assembly-CSharp/MissionEntity.cs
-index 4c13db9..7201617 100644
+index 4c13db9..103a6ee 100644
 --- a/Decompiled/Assembly-CSharp/MissionEntity.cs
 +++ b/Decompiled/Assembly-CSharp/MissionEntity.cs
 @@ -2,6 +2,7 @@ using System;
@@ -36275,7 +36729,7 @@ index 4c13db9..7201617 100644
  
  public class MissionEntity : GameEntity
  {
-@@ -1019,4 +1020,93 @@ public class MissionEntity : GameEntity
+@@ -1019,4 +1020,109 @@ public class MissionEntity : GameEntity
  		}
  		return list;
  	}
@@ -36288,8 +36742,24 @@ index 4c13db9..7201617 100644
 +
 +	private bool m_isTurnCounterBasedMission = false; // Used to avoid race conditions after the counter is destroyed
 +
-+    protected virtual void InitTurnCounterVisuals()
++	// the key used by a particular mission to specify what should read in the banner.
++	// Not all "turn counter"-based missions are turns. e.g. Valeera 08 is "silent shadows left to defeat" but all componentry is reused
++	private string m_turnCounterKey;
++
++	// Not all of these are the same between missions but it's easier to keep them like this to force conflicts if Blizzard refactors any of this
++	private bool m_fsmRunningManVal;
++	private bool m_fsmMineCartVal;
++	private bool m_fsmAirshipVal;
++	private bool m_fsmDestroyerVal;
++
++    protected virtual void InitTurnCounterVisuals(string turnCounterKey, bool fsmRunningManVal, bool fsmMineCartVal, bool fsmAirshipVal, bool fsmDestroyerVal)
 +	{
++		m_turnCounterKey = turnCounterKey;
++		m_fsmRunningManVal = fsmRunningManVal;
++		m_fsmMineCartVal = fsmMineCartVal;
++		m_fsmAirshipVal = fsmAirshipVal;
++		m_fsmDestroyerVal = fsmDestroyerVal;
++
 +		m_isTurnCounterBasedMission = true;
 +		int cost = GetCost();
 +		InitTurnCounter(cost);
@@ -36300,10 +36770,10 @@ index 4c13db9..7201617 100644
 +		GameObject gameObject = AssetLoader.Get().InstantiatePrefab("LOE_Turn_Timer.prefab:b05530aa55868554fb8f0c66632b3c22");
 +		m_turnCounter = gameObject.GetComponent<Notification>();
 +		PlayMakerFSM component = m_turnCounter.GetComponent<PlayMakerFSM>();
-+		component.FsmVariables.GetFsmBool("RunningMan").Value = false;
-+		component.FsmVariables.GetFsmBool("MineCart").Value = false;
-+		component.FsmVariables.GetFsmBool("Airship").Value = false;
-+		component.FsmVariables.GetFsmBool("Destroyer").Value = true;
++		component.FsmVariables.GetFsmBool("RunningMan").Value = m_fsmRunningManVal;
++		component.FsmVariables.GetFsmBool("MineCart").Value = m_fsmMineCartVal;
++		component.FsmVariables.GetFsmBool("Airship").Value = m_fsmAirshipVal;
++		component.FsmVariables.GetFsmBool("Destroyer").Value = m_fsmDestroyerVal;
 +		component.SendEvent("Birth");
 +		Actor actor = GameState.Get().GetOpposingSidePlayer().GetHeroCard()
 +			.GetActor();
@@ -36350,7 +36820,7 @@ index 4c13db9..7201617 100644
 +				m_number = cost
 +			}
 +		};
-+		string headlineString = GameStrings.FormatPlurals("BOH_GULDAN_01", pluralNumbers);
++		string headlineString = GameStrings.FormatPlurals(m_turnCounterKey, pluralNumbers);
 +		string costString = cost.ToString();
 +		m_turnCounter.ChangeDialogText(headlineString, costString, "", "");
 +		m_turnCounterText = $"{costString} {headlineString}";
@@ -38084,7 +38554,7 @@ index 361d824..a2b648e 100644
 +    #endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/PowerTaskList.cs b/Decompiled/Assembly-CSharp/PowerTaskList.cs
-index c120d33..f552574 100644
+index c120d33..7c59a68 100644
 --- a/Decompiled/Assembly-CSharp/PowerTaskList.cs
 +++ b/Decompiled/Assembly-CSharp/PowerTaskList.cs
 @@ -1,13 +1,15 @@
@@ -38121,7 +38591,7 @@ index c120d33..f552574 100644
  	{
  		for (int i = incompleteStartIndex; i <= endIndex; i++)
  		{
-@@ -1910,4 +1913,33 @@ public class PowerTaskList
+@@ -1910,4 +1913,38 @@ public class PowerTaskList
  			}
  		}
  	}
@@ -38152,6 +38622,11 @@ index c120d33..f552574 100644
 +    {
 +        m_globalCompleteCallback?.Invoke(this);
 +    }
++
++	public bool IsTradeBlock()
++	{
++		return IsBlockType(HistoryBlock.Type.TRADE);
++	}
 +
 +	#endregion
  }
