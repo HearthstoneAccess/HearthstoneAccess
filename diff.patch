@@ -17581,7 +17581,7 @@ index 0000000..9473d38
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 0000000..aff9be9
+index 0000000..9a2aa3b
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -17591,9 +17591,9 @@ index 0000000..aff9be9
 +{
 +    public class HearthstoneAccessConstants
 +    {
-+        public static string HEARTHSTONE_VERSION = "22.0.0.126807";
++        public static string HEARTHSTONE_VERSION = "22.0.0.127581";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "18";
++        public static string HEARTHSTONE_ACCESS_VERSION = "19";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -30961,10 +30961,10 @@ index bf13053..b90b717 100644
  
  	private void OnFatalErrorScreenLoaded(AssetReference assetRef, GameObject go, object callbackData)
 diff --git a/Decompiled/Assembly-CSharp/FatalErrorScreen.cs b/Decompiled/Assembly-CSharp/FatalErrorScreen.cs
-index 1fd2a6d..6dabcf6 100644
+index d2b3512..809c0e0 100644
 --- a/Decompiled/Assembly-CSharp/FatalErrorScreen.cs
 +++ b/Decompiled/Assembly-CSharp/FatalErrorScreen.cs
-@@ -4,8 +4,9 @@ using System.Collections.Generic;
+@@ -3,8 +3,9 @@ using System.Collections;
  using Hearthstone;
  using Hearthstone.Core;
  using UnityEngine;
@@ -30975,7 +30975,7 @@ index 1fd2a6d..6dabcf6 100644
  {
  	public UberText m_closedSignText;
  
-@@ -126,6 +127,8 @@ public class FatalErrorScreen : MonoBehaviour
+@@ -125,6 +126,8 @@ public class FatalErrorScreen : MonoBehaviour
  		{
  			Processor.TerminateAllProcessing();
  		}
@@ -30984,7 +30984,7 @@ index 1fd2a6d..6dabcf6 100644
  	}
  
  	private void OnClick(UIEvent e)
-@@ -165,4 +168,43 @@ public class FatalErrorScreen : MonoBehaviour
+@@ -164,4 +167,43 @@ public class FatalErrorScreen : MonoBehaviour
  		yield return new WaitForSeconds(waitDuration);
  		HearthstoneApplication.Get().Reset();
  	}
@@ -33113,7 +33113,7 @@ index 1263ae0..57b6811 100644
  		return value > 0;
  	}
 diff --git a/Decompiled/Assembly-CSharp/GameState.cs b/Decompiled/Assembly-CSharp/GameState.cs
-index 1242434..66a5fa4 100644
+index 75c051a..be0baed 100644
 --- a/Decompiled/Assembly-CSharp/GameState.cs
 +++ b/Decompiled/Assembly-CSharp/GameState.cs
 @@ -7,6 +7,7 @@ using System.Text;
@@ -33590,7 +33590,7 @@ index 760d6f8..3cdddf5 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
-index 7c94bca..405197f 100644
+index 9d1024f..4ec8b5a 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 @@ -94,6 +94,37 @@ namespace Hearthstone
@@ -33632,7 +33632,7 @@ index 7c94bca..405197f 100644
  		{
  			if (PlatformSettings.IsMobileRuntimeOS && (on ^ m_ANRMonitorOn))
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
-index 6ef4dec..9c72fbf 100644
+index 09d6781..ed24fa7 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 @@ -5,6 +5,7 @@ using System.IO;
@@ -33682,7 +33682,7 @@ index 6ef4dec..9c72fbf 100644
 -			ExceptionReporterControl.Get().ExceptionReportInitialize();
 +			// ExceptionReporterControl.Get().ExceptionReportInitialize(); // Remove so we don't send Blizzard exceptions that may be caused by us
 +			ExceptionReporterControl.Get().ExceptionReportInitializeDebug();
- 			HearthstonePerformance.Initialize(TestType, 2549758.ToString());
+ 			HearthstonePerformance.Initialize(TestType, 2557471.ToString());
  			HearthstonePerformance.Get()?.CaptureAppStartTime();
  			AppLaunchTracker.TrackAppLaunch();
 @@ -209,6 +215,8 @@ namespace Hearthstone
@@ -33694,7 +33694,7 @@ index 6ef4dec..9c72fbf 100644
  			IsHearthstoneClosing = true;
  			UberText.StoreCachedData();
  			if (this.OnShutdown != null)
-@@ -455,6 +463,7 @@ namespace Hearthstone
+@@ -456,6 +464,7 @@ namespace Hearthstone
  		{
  			WaitForGameDownloadManagerState waitForGameDownloadManagerState = new WaitForGameDownloadManagerState();
  			JobDefinition jobDefinition = new JobDefinition("GameStrings.LoadAll", GameStrings.Job_LoadAll(), waitForGameDownloadManagerState);
@@ -33702,7 +33702,7 @@ index 6ef4dec..9c72fbf 100644
  			Processor.QueueJob("HearthstoneApplication.InitializeMode", Job_InitializeMode());
  			Processor.QueueJob(jobDefinition);
  			Processor.QueueJob("UberText.LoadCachedData", UberText.Job_LoadCachedData());
-@@ -478,7 +487,12 @@ namespace Hearthstone
+@@ -479,7 +488,12 @@ namespace Hearthstone
  			yield break;
  		}
  
@@ -37306,10 +37306,10 @@ index 114e077..8b7efd4 100644
  	{
  		base.OnDestroy();
 diff --git a/Decompiled/Assembly-CSharp/NameBanner.cs b/Decompiled/Assembly-CSharp/NameBanner.cs
-index 3d53bf9..47858f8 100644
+index d20132e..8b97b73 100644
 --- a/Decompiled/Assembly-CSharp/NameBanner.cs
 +++ b/Decompiled/Assembly-CSharp/NameBanner.cs
-@@ -939,7 +939,7 @@ public class NameBanner : MonoBehaviour
+@@ -960,7 +960,7 @@ public class NameBanner : MonoBehaviour
  		return (HonorManager.FactionChoice)GetPlayerForSide(playerSide).GetTag(GAME_TAG.AVFACTION);
  	}
  
@@ -37414,7 +37414,7 @@ index e27bdec..b072086 100644
  		if (netObject == null)
  		{
 diff --git a/Decompiled/Assembly-CSharp/Network.cs b/Decompiled/Assembly-CSharp/Network.cs
-index b5f6f92..2a580dd 100644
+index cd1a054..9f6cdf4 100644
 --- a/Decompiled/Assembly-CSharp/Network.cs
 +++ b/Decompiled/Assembly-CSharp/Network.cs
 @@ -31,6 +31,7 @@ using Shared.Scripts.Game.Shop.Product;
@@ -37693,7 +37693,7 @@ index 4ac7b6e..d289ccc 100644
  			Option.DEBUG_SHOW_BATTLEGROUND_SKIN_IDS,
  			false
 diff --git a/Decompiled/Assembly-CSharp/OptionsMenu.cs b/Decompiled/Assembly-CSharp/OptionsMenu.cs
-index ab2f908..1ca438b 100644
+index 4051032..f8cceea 100644
 --- a/Decompiled/Assembly-CSharp/OptionsMenu.cs
 +++ b/Decompiled/Assembly-CSharp/OptionsMenu.cs
 @@ -3,9 +3,10 @@ using System.Collections.Generic;
