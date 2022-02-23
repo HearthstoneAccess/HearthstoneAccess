@@ -21285,7 +21285,7 @@ index 0000000..9473d38
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 0000000..ca0c77d
+index 0000000..dc7ebd5
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -21297,7 +21297,7 @@ index 0000000..ca0c77d
 +    {
 +        public static string HEARTHSTONE_VERSION = "22.4.0.131660";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "24";
++        public static string HEARTHSTONE_ACCESS_VERSION = "25";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -37824,7 +37824,7 @@ index f4f954a..0d7e872 100644
 +    #endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/GameUtils.cs b/Decompiled/Assembly-CSharp/GameUtils.cs
-index 3bc13b9..24d11a2 100644
+index 3bc13b9..480c877 100644
 --- a/Decompiled/Assembly-CSharp/GameUtils.cs
 +++ b/Decompiled/Assembly-CSharp/GameUtils.cs
 @@ -13,6 +13,7 @@ using PegasusShared;
@@ -37864,7 +37864,17 @@ index 3bc13b9..24d11a2 100644
  		NetCache.NetCacheHeroLevels netObject = NetCache.Get().GetNetObject<NetCache.NetCacheHeroLevels>();
  		if (netObject == null)
  		{
-@@ -2359,6 +2375,12 @@ public class GameUtils
+@@ -1834,6 +1850,9 @@ public class GameUtils
+ 
+ 	public static bool TutorialPreviewVideosEnabled()
+ 	{
++		// These videos are not accessible and they break tutorials
++		return false;
++
+ 		NetCache.NetCacheFeatures netObject = NetCache.Get().GetNetObject<NetCache.NetCacheFeatures>();
+ 		if (netObject == null)
+ 		{
+@@ -2359,6 +2378,12 @@ public class GameUtils
  		{
  			return false;
  		}
@@ -37877,7 +37887,7 @@ index 3bc13b9..24d11a2 100644
  		return Options.Get().GetBool(Option.FAKE_PACK_OPENING);
  	}
  
-@@ -2368,6 +2390,12 @@ public class GameUtils
+@@ -2368,6 +2393,12 @@ public class GameUtils
  		{
  			return 0;
  		}
@@ -37890,7 +37900,7 @@ index 3bc13b9..24d11a2 100644
  		return Options.Get().GetInt(Option.FAKE_PACK_COUNT);
  	}
  
-@@ -3054,4 +3082,79 @@ public class GameUtils
+@@ -3054,4 +3085,79 @@ public class GameUtils
  		}
  		return false;
  	}
