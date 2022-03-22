@@ -21285,7 +21285,7 @@ index 0000000..9473d38
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 0000000..75271b5
+index 0000000..c3c76dc
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -21295,9 +21295,9 @@ index 0000000..75271b5
 +{
 +    public class HearthstoneAccessConstants
 +    {
-+        public static string HEARTHSTONE_VERSION = "22.6.0.133923";
++        public static string HEARTHSTONE_VERSION = "22.6.0.134558";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "27";
++        public static string HEARTHSTONE_ACCESS_VERSION = "28";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -33302,7 +33302,7 @@ index a99b395..a2c5638 100644
  	}
  
 diff --git a/Decompiled/Assembly-CSharp/CraftingManager.cs b/Decompiled/Assembly-CSharp/CraftingManager.cs
-index c9d5ba7..afafb99 100644
+index 80cb8eb..8f3135e 100644
 --- a/Decompiled/Assembly-CSharp/CraftingManager.cs
 +++ b/Decompiled/Assembly-CSharp/CraftingManager.cs
 @@ -1,6 +1,7 @@
@@ -33313,35 +33313,26 @@ index c9d5ba7..afafb99 100644
  
  [CustomEditClass]
  public class CraftingManager : MonoBehaviour
-@@ -298,18 +299,20 @@ public class CraftingManager : MonoBehaviour
+@@ -298,9 +299,7 @@ public class CraftingManager : MonoBehaviour
  			Name = entityDef.GetCardId(),
  			Premium = premium
  		};
 -		int numOwnedIncludePending = GetNumOwnedIncludePending();
- 		long arcaneDustBalance = NetCache.Get().GetArcaneDustBalance();
- 		bool flag = GetNumClientTransactions() < 0;
 -		int num = (entityDef.IsElite() ? 1 : 2);
--		if (numOwnedIncludePending >= num && arcaneDustBalance >= GetCardBuyValue(cardDefinition.Name, cardDefinition.Premium))
-+		bool hasReachedCardLimit = HasReachedCardLimit(entityDef, GetNumOwnedIncludePending());
-+
-+		if (hasReachedCardLimit || arcaneDustBalance < GetCardBuyValue(cardDefinition.Name, cardDefinition.Premium))
+-		if (numOwnedIncludePending >= num)
++		if (HasReachedCardLimit(entityDef, GetNumOwnedIncludePending()))
  		{
--			if (RankMgr.Get().IsCardLockedInCurrentLeague(entityDef))
--			{
--				return !flag;
--			}
  			return false;
  		}
-+
-+		if (RankMgr.Get().IsCardLockedInCurrentLeague(entityDef))
-+		{
-+			return !flag;
-+		}
+@@ -312,6 +311,7 @@ public class CraftingManager : MonoBehaviour
+ 		{
+ 			return false;
+ 		}
 +
  		return true;
  	}
  
-@@ -483,6 +486,8 @@ public class CraftingManager : MonoBehaviour
+@@ -485,6 +485,8 @@ public class CraftingManager : MonoBehaviour
  			}
  			return result;
  		});
@@ -33350,7 +33341,7 @@ index c9d5ba7..afafb99 100644
  	}
  
  	private void SetupActor(Actor collectionCardActor, TAG_PREMIUM premium)
-@@ -575,6 +580,7 @@ public class CraftingManager : MonoBehaviour
+@@ -577,6 +579,7 @@ public class CraftingManager : MonoBehaviour
  		iTween.ScaleTo(m_switchPremiumButton.gameObject, m_cardCountTabHideScale, 0.4f);
  		TellServerAboutWhatUserDid();
  		IsInCraftingMode = false;
@@ -33358,7 +33349,7 @@ index c9d5ba7..afafb99 100644
  		return true;
  	}
  
-@@ -721,6 +727,8 @@ public class CraftingManager : MonoBehaviour
+@@ -723,6 +726,8 @@ public class CraftingManager : MonoBehaviour
  
  	public void OnCardDisenchanted(Network.CardSaleResult sale)
  	{
@@ -33367,7 +33358,7 @@ index c9d5ba7..afafb99 100644
  		m_pendingServerTransaction = null;
  		CollectionCardVisual cardVisual = CollectionManager.Get().GetCollectibleDisplay().GetPageManager()
  			.GetCardVisual(sale.AssetName, sale.Premium);
-@@ -732,6 +740,8 @@ public class CraftingManager : MonoBehaviour
+@@ -734,6 +739,8 @@ public class CraftingManager : MonoBehaviour
  
  	public void OnCardCreated(Network.CardSaleResult sale)
  	{
@@ -33376,7 +33367,7 @@ index c9d5ba7..afafb99 100644
  		m_pendingServerTransaction = null;
  		CollectionCardVisual cardVisual = CollectionManager.Get().GetCollectibleDisplay().GetPageManager()
  			.GetCardVisual(sale.AssetName, sale.Premium);
-@@ -1528,4 +1538,12 @@ public class CraftingManager : MonoBehaviour
+@@ -1530,4 +1537,12 @@ public class CraftingManager : MonoBehaviour
  	{
  		CardBackManager.Get().LoadRandomCardBackFavoritedByPlayer(updateScene: true);
  	}
@@ -33420,7 +33411,7 @@ index cef539b..b4fe9d5 100644
  	}
  
 diff --git a/Decompiled/Assembly-CSharp/CraftingUI.cs b/Decompiled/Assembly-CSharp/CraftingUI.cs
-index b7758e6..b6aa185 100644
+index 6395287..28a41c8 100644
 --- a/Decompiled/Assembly-CSharp/CraftingUI.cs
 +++ b/Decompiled/Assembly-CSharp/CraftingUI.cs
 @@ -1,6 +1,7 @@
@@ -33487,18 +33478,15 @@ index b7758e6..b6aa185 100644
  		{
  			m_buttonDisenchant.DisableButton();
  		}
-@@ -193,9 +205,7 @@ public class CraftingUI : MonoBehaviour
+@@ -193,6 +205,7 @@ public class CraftingUI : MonoBehaviour
  		{
  			m_buttonDisenchant.EnableButton();
  		}
--		entityDef.IsElite();
--		NetCache.Get().GetArcaneDustBalance();
--		CraftingManager.Get().GetNumClientTransactions();
 +		m_reachedCardLimit = CraftingManager.Get().HasReachedCardLimit(entityDef, m_numOwnedIncludePending);
- 		if (!CraftingManager.Get().GetCanUpgradeCardToGolden(cardDefinition.Name, cardDefinition.Premium) && !CraftingManager.Get().GetCanCraftCardRightNow(entityDef, premium))
+ 		bool flag2 = CraftingManager.Get().GetNumClientTransactions() < 0;
+ 		if (CraftingManager.Get().CanCraftCardRightNow(entityDef, premium) || flag2)
  		{
- 			m_buttonCreate.DisableButton();
-@@ -256,9 +266,9 @@ public class CraftingUI : MonoBehaviour
+@@ -254,9 +267,9 @@ public class CraftingUI : MonoBehaviour
  		{
  			return;
  		}
@@ -33510,7 +33498,7 @@ index b7758e6..b6aa185 100644
  		{
  			UpdateTips();
  			CraftingManager.Get().AdjustUnCommitedArcaneDustChanges(-CraftingManager.Get().GetCardBuyValue(CraftingManager.Get().GetShownActor().GetEntityDef()
-@@ -330,7 +340,7 @@ public class CraftingUI : MonoBehaviour
+@@ -328,7 +341,7 @@ public class CraftingUI : MonoBehaviour
  
  	private void ShowFirstTimeTips()
  	{
@@ -33519,7 +33507,7 @@ index b7758e6..b6aa185 100644
  		{
  			CreateDisenchantNotification();
  			CreateCraftNotification();
-@@ -344,6 +354,12 @@ public class CraftingUI : MonoBehaviour
+@@ -342,6 +355,12 @@ public class CraftingUI : MonoBehaviour
  
  	private void CreateCraftNotification()
  	{
@@ -33532,7 +33520,7 @@ index b7758e6..b6aa185 100644
  		if (m_buttonCreate.IsButtonEnabled())
  		{
  			Vector3 position;
-@@ -371,7 +387,7 @@ public class CraftingUI : MonoBehaviour
+@@ -369,7 +388,7 @@ public class CraftingUI : MonoBehaviour
  
  	private void UpdateTips()
  	{
@@ -33541,7 +33529,7 @@ index b7758e6..b6aa185 100644
  		{
  			HideTips();
  		}
-@@ -496,6 +512,8 @@ public class CraftingUI : MonoBehaviour
+@@ -494,6 +513,8 @@ public class CraftingUI : MonoBehaviour
  
  	private IEnumerator DoDisenchantAnims()
  	{
@@ -33550,7 +33538,7 @@ index b7758e6..b6aa185 100644
  		SoundManager.Get().Play(m_disenchantSound.GetComponent<AudioSource>());
  		SoundManager.Get().Stop(m_craftingSound.GetComponent<AudioSource>());
  		m_isAnimating = true;
-@@ -529,6 +547,7 @@ public class CraftingUI : MonoBehaviour
+@@ -527,6 +548,7 @@ public class CraftingUI : MonoBehaviour
  			playmaker.SendEvent("Action");
  			yield return new WaitForSeconds(1f);
  			m_isAnimating = false;
@@ -33558,7 +33546,7 @@ index b7758e6..b6aa185 100644
  			yield return new WaitForSeconds(10f);
  			if (oldActor != null)
  			{
-@@ -539,6 +558,8 @@ public class CraftingUI : MonoBehaviour
+@@ -537,6 +559,8 @@ public class CraftingUI : MonoBehaviour
  
  	private IEnumerator DoCreateAnims()
  	{
@@ -33567,7 +33555,7 @@ index b7758e6..b6aa185 100644
  		Actor shownActor = CraftingManager.Get().GetShownActor();
  		SoundManager.Get().Play(m_craftingSound.GetComponent<AudioSource>());
  		SoundManager.Get().Stop(m_disenchantSound.GetComponent<AudioSource>());
-@@ -563,5 +584,21 @@ public class CraftingUI : MonoBehaviour
+@@ -561,5 +585,21 @@ public class CraftingUI : MonoBehaviour
  			yield return new WaitForSeconds(1f);
  			m_isAnimating = false;
  		}
@@ -33590,7 +33578,7 @@ index b7758e6..b6aa185 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/CreateButton.cs b/Decompiled/Assembly-CSharp/CreateButton.cs
-index 846c821..bca7c7e 100644
+index 480d173..a8d8205 100644
 --- a/Decompiled/Assembly-CSharp/CreateButton.cs
 +++ b/Decompiled/Assembly-CSharp/CreateButton.cs
 @@ -94,7 +94,7 @@ public class CreateButton : CraftingButton
@@ -37693,7 +37681,7 @@ index 1263ae0..57b6811 100644
  		return value > 0;
  	}
 diff --git a/Decompiled/Assembly-CSharp/GameState.cs b/Decompiled/Assembly-CSharp/GameState.cs
-index ac0292f..86149cb 100644
+index f35e43d..4523eb4 100644
 --- a/Decompiled/Assembly-CSharp/GameState.cs
 +++ b/Decompiled/Assembly-CSharp/GameState.cs
 @@ -10,6 +10,7 @@ using Assets;
@@ -38187,7 +38175,7 @@ index 760d6f8..f280d14 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
-index 7568b4e..b7bb836 100644
+index cbda255..108f7e3 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 @@ -96,6 +96,37 @@ namespace Hearthstone
@@ -38229,7 +38217,7 @@ index 7568b4e..b7bb836 100644
  		{
  			if (PlatformSettings.IsMobileRuntimeOS && (on ^ m_ANRMonitorOn))
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
-index 57f85ff..d006bc5 100644
+index 1fb195f..e5bc499 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 @@ -5,6 +5,7 @@ using System.IO;
@@ -38279,7 +38267,7 @@ index 57f85ff..d006bc5 100644
 -			ExceptionReporterControl.Get().ExceptionReportInitialize();
 +			// ExceptionReporterControl.Get().ExceptionReportInitialize(); // Remove so we don't send Blizzard exceptions that may be caused by us
 +			ExceptionReporterControl.Get().ExceptionReportInitializeDebug();
- 			HearthstonePerformance.Initialize(TestType, 2738135.ToString());
+ 			HearthstonePerformance.Initialize(TestType, 2754044.ToString());
  			HearthstonePerformance.Get()?.CaptureAppStartTime();
  			AppLaunchTracker.TrackAppLaunch();
 @@ -214,6 +220,8 @@ namespace Hearthstone
@@ -42035,7 +42023,7 @@ index 907665d..c193a2e 100644
  		if (netObject == null)
  		{
 diff --git a/Decompiled/Assembly-CSharp/Network.cs b/Decompiled/Assembly-CSharp/Network.cs
-index 10b5a44..7e5a857 100644
+index 494d425..d44c21b 100644
 --- a/Decompiled/Assembly-CSharp/Network.cs
 +++ b/Decompiled/Assembly-CSharp/Network.cs
 @@ -33,6 +33,7 @@ using Shared.Scripts.Game.Shop.Product;
@@ -42324,7 +42312,7 @@ index 3996205..052097d 100644
  			Option.DEBUG_SHOW_BATTLEGROUND_SKIN_IDS,
  			false
 diff --git a/Decompiled/Assembly-CSharp/OptionsMenu.cs b/Decompiled/Assembly-CSharp/OptionsMenu.cs
-index 10b6899..9a2fe6d 100644
+index bde1fd5..9325978 100644
 --- a/Decompiled/Assembly-CSharp/OptionsMenu.cs
 +++ b/Decompiled/Assembly-CSharp/OptionsMenu.cs
 @@ -4,9 +4,10 @@ using Blizzard.T5.Configuration;
