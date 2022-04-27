@@ -21369,7 +21369,7 @@ index 0000000..9473d38
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 0000000..5077abd
+index 0000000..e1f8a0f
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -21379,9 +21379,9 @@ index 0000000..5077abd
 +{
 +    public class HearthstoneAccessConstants
 +    {
-+        public static string HEARTHSTONE_VERSION = "23.0.0.135540";
++        public static string HEARTHSTONE_VERSION = "23.0.3.137436";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "29";
++        public static string HEARTHSTONE_ACCESS_VERSION = "30";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -46281,7 +46281,7 @@ index bfa7482..2eb44a2 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/SetRotationManager.cs b/Decompiled/Assembly-CSharp/SetRotationManager.cs
-index 9985622..093d36e 100644
+index 9985622..0bb5d73 100644
 --- a/Decompiled/Assembly-CSharp/SetRotationManager.cs
 +++ b/Decompiled/Assembly-CSharp/SetRotationManager.cs
 @@ -6,6 +6,7 @@ using Blizzard.T5.Services;
@@ -46306,7 +46306,7 @@ index 9985622..093d36e 100644
  			return false;
  		}
 -		BasicPopup.PopupInfo popupInfo = new BasicPopup.PopupInfo();
-+		var popupText = GameStrings.Get("GLUE_NEW_PLAYER_SET_ROTATION_POPUP_BODY_NEW");
++		var popupText = GameStrings.Get("GLUE_NEW_PLAYER_SET_ROTATION_POPUP_BODY");
 +		BasicPopup.PopupInfo popupInfo = new BasicPopup.PopupInfo(popupText);
  		popupInfo.m_prefabAssetRefs.Add("SetRotationNewPlayerPopup.prefab:ed707c931e185924eab67aa36770f8ec");
  		popupInfo.m_blurWhenShown = true;
