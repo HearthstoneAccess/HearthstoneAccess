@@ -1,5 +1,5 @@
 diff --git a/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs b/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
-index fbe88925..59a831fc 100644
+index 143e3ed1..2be130ec 100644
 --- a/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/AbsDeckPickerTrayDisplay.cs
 @@ -6,6 +6,7 @@ using Hearthstone.DataModels;
@@ -21414,7 +21414,7 @@ index 00000000..9473d383
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 00000000..7d464dd3
+index 00000000..a81352f3
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -21424,9 +21424,9 @@ index 00000000..7d464dd3
 +{
 +    public class HearthstoneAccessConstants
 +    {
-+        public static string HEARTHSTONE_VERSION = "23.2.2.139522";
++        public static string HEARTHSTONE_VERSION = "23.2.2.139719";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "31";
++        public static string HEARTHSTONE_ACCESS_VERSION = "32";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -29408,7 +29408,7 @@ index ebd86bdf..b77bcc92 100644
  	}
  
 diff --git a/Decompiled/Assembly-CSharp/BaconDisplay.cs b/Decompiled/Assembly-CSharp/BaconDisplay.cs
-index f47f738c..ef8b148d 100644
+index ed8d11d9..595025f4 100644
 --- a/Decompiled/Assembly-CSharp/BaconDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/BaconDisplay.cs
 @@ -40,7 +40,7 @@ public class BaconDisplay : MonoBehaviour
@@ -33094,7 +33094,7 @@ index f9a1cfe3..c833f157 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/CollectibleDisplay.cs b/Decompiled/Assembly-CSharp/CollectibleDisplay.cs
-index e7ef6415..8251f2e9 100644
+index 443882aa..eb57d900 100644
 --- a/Decompiled/Assembly-CSharp/CollectibleDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/CollectibleDisplay.cs
 @@ -5,6 +5,7 @@ using System.Linq;
@@ -33614,7 +33614,7 @@ index 7c6471ae..afa65abe 100644
 +	#endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/CollectionManagerDisplay.cs b/Decompiled/Assembly-CSharp/CollectionManagerDisplay.cs
-index 1422ce29..c5436554 100644
+index 26f904dd..a35a19e1 100644
 --- a/Decompiled/Assembly-CSharp/CollectionManagerDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/CollectionManagerDisplay.cs
 @@ -10,6 +10,7 @@ using Hearthstone;
@@ -34367,7 +34367,7 @@ index f24f3ec9..20c9d102 100644
  
  	private void OnRetireButtonReleased(UIEvent e)
 diff --git a/Decompiled/Assembly-CSharp/DeckPickerTrayDisplay.cs b/Decompiled/Assembly-CSharp/DeckPickerTrayDisplay.cs
-index f3f6177d..7beb2904 100644
+index 9923add7..090df6f7 100644
 --- a/Decompiled/Assembly-CSharp/DeckPickerTrayDisplay.cs
 +++ b/Decompiled/Assembly-CSharp/DeckPickerTrayDisplay.cs
 @@ -11,9 +11,10 @@ using Hearthstone.Progression;
@@ -35283,7 +35283,7 @@ index 8fb88d41..950c44d8 100644
  
  	private void ShowDeckHelpButtonIfNeeded()
 diff --git a/Decompiled/Assembly-CSharp/DeckTrayDeckListContent.cs b/Decompiled/Assembly-CSharp/DeckTrayDeckListContent.cs
-index 281473b7..58abd4b6 100644
+index aed4423d..252bed87 100644
 --- a/Decompiled/Assembly-CSharp/DeckTrayDeckListContent.cs
 +++ b/Decompiled/Assembly-CSharp/DeckTrayDeckListContent.cs
 @@ -6,6 +6,7 @@ using Hearthstone;
@@ -36155,7 +36155,7 @@ index 869b7b1b..9adbc097 100644
  	public class Info
  	{
 diff --git a/Decompiled/Assembly-CSharp/FriendChallengeMgr.cs b/Decompiled/Assembly-CSharp/FriendChallengeMgr.cs
-index 0bd974a9..cf0c8767 100644
+index dedc074d..9593f308 100644
 --- a/Decompiled/Assembly-CSharp/FriendChallengeMgr.cs
 +++ b/Decompiled/Assembly-CSharp/FriendChallengeMgr.cs
 @@ -12,6 +12,7 @@ using PegasusShared;
@@ -38401,7 +38401,7 @@ index 1263ae0b..57b68119 100644
  		return value > 0;
  	}
 diff --git a/Decompiled/Assembly-CSharp/GameState.cs b/Decompiled/Assembly-CSharp/GameState.cs
-index e4f66df3..126ac62b 100644
+index ec4a0fe8..13ee9869 100644
 --- a/Decompiled/Assembly-CSharp/GameState.cs
 +++ b/Decompiled/Assembly-CSharp/GameState.cs
 @@ -10,6 +10,7 @@ using Assets;
@@ -39148,7 +39148,7 @@ index ed8cffff..a39eea9b 100644
  	}
  }
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
-index 15edc8c7..fb5fbe2d 100644
+index 9d270724..d49843a0 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 @@ -80,6 +80,37 @@ namespace Hearthstone
@@ -39190,7 +39190,7 @@ index 15edc8c7..fb5fbe2d 100644
  		{
  			if (PlatformSettings.IsMobileRuntimeOS && (on ^ m_ANRMonitorOn))
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
-index 046c1db3..2465c311 100644
+index a9a7f68b..0bf82225 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 @@ -5,6 +5,7 @@ using System.IO;
@@ -39245,7 +39245,7 @@ index 046c1db3..2465c311 100644
 -			ExceptionReporterControl.Get().ExceptionReportInitialize();
 +			// ExceptionReporterControl.Get().ExceptionReportInitialize(); // Remove so we don't send Blizzard exceptions that may be caused by us
 +			ExceptionReporterControl.Get().ExceptionReportInitializeDebug();
- 			HearthstonePerformance.Initialize(TestType, 2853307.ToString());
+ 			HearthstonePerformance.Initialize(TestType, 2875277.ToString());
  			HearthstonePerformance.Get()?.CaptureAppStartTime();
  			AppLaunchTracker.TrackAppLaunch();
 @@ -218,6 +223,8 @@ namespace Hearthstone
@@ -40836,7 +40836,7 @@ index 00aabe7b..1b50b8b6 100644
  		protected T Helper { get; private set; }
  
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/UI/Clickable.cs b/Decompiled/Assembly-CSharp/Hearthstone/UI/Clickable.cs
-index de582048..d02e1deb 100644
+index 6fb78e91..c97047e9 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/UI/Clickable.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/UI/Clickable.cs
 @@ -555,5 +555,14 @@ namespace Hearthstone.UI
@@ -40877,7 +40877,7 @@ index 0d1f493c..1359e1e7 100644
  		}
  
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/UI/Spawnable.cs b/Decompiled/Assembly-CSharp/Hearthstone/UI/Spawnable.cs
-index 595f4c6e..1d768a40 100644
+index 16733b10..c2ab16ce 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/UI/Spawnable.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/UI/Spawnable.cs
 @@ -320,7 +320,7 @@ namespace Hearthstone.UI
@@ -40890,11 +40890,11 @@ index 595f4c6e..1d768a40 100644
  				HandleDoneChangingStates();
  			}
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/UI/WidgetInstance.cs b/Decompiled/Assembly-CSharp/Hearthstone/UI/WidgetInstance.cs
-index 52974c2d..7400e658 100644
+index b50d32ac..350d916c 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/UI/WidgetInstance.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/UI/WidgetInstance.cs
 @@ -34,7 +34,7 @@ namespace Hearthstone.UI
- 		[SerializeField]
+ 		[HideInInspector]
  		private LoadingPolicy m_loadingPolicy;
  
 -		private PrefabInstance m_prefabInstance;
@@ -41402,7 +41402,7 @@ index 2fea1f40..1bd3e58b 100644
  				mousePickDistanceUsed = distance;
  				mousePickRaycastTime = Time.frameCount;
 diff --git a/Decompiled/Assembly-CSharp/HutongGames/PlayMaker/Actions/GetMouseX.cs b/Decompiled/Assembly-CSharp/HutongGames/PlayMaker/Actions/GetMouseX.cs
-index 6e7ede52..2ccd3a7c 100644
+index 2a1f4e8a..ea4c7876 100644
 --- a/Decompiled/Assembly-CSharp/HutongGames/PlayMaker/Actions/GetMouseX.cs
 +++ b/Decompiled/Assembly-CSharp/HutongGames/PlayMaker/Actions/GetMouseX.cs
 @@ -42,7 +42,8 @@ namespace HutongGames.PlayMaker.Actions
@@ -41430,7 +41430,7 @@ index 3f3710d9..5c47d036 100644
  				{
  					num /= (float)Screen.height;
 diff --git a/Decompiled/Assembly-CSharp/HutongGames/PlayMaker/Actions/MousePick2d.cs b/Decompiled/Assembly-CSharp/HutongGames/PlayMaker/Actions/MousePick2d.cs
-index 54e8cc90..edc9cf03 100644
+index 4af89896..378fd6bf 100644
 --- a/Decompiled/Assembly-CSharp/HutongGames/PlayMaker/Actions/MousePick2d.cs
 +++ b/Decompiled/Assembly-CSharp/HutongGames/PlayMaker/Actions/MousePick2d.cs
 @@ -54,7 +54,8 @@ namespace HutongGames.PlayMaker.Actions
@@ -41444,7 +41444,7 @@ index 54e8cc90..edc9cf03 100644
  			bool flag = rayIntersection.collider != null;
  			storeDidPickObject.Value = flag;
 diff --git a/Decompiled/Assembly-CSharp/HutongGames/PlayMaker/Actions/MousePick2dEvent.cs b/Decompiled/Assembly-CSharp/HutongGames/PlayMaker/Actions/MousePick2dEvent.cs
-index fd45d237..a89ea572 100644
+index 0bd9671c..d27550ce 100644
 --- a/Decompiled/Assembly-CSharp/HutongGames/PlayMaker/Actions/MousePick2dEvent.cs
 +++ b/Decompiled/Assembly-CSharp/HutongGames/PlayMaker/Actions/MousePick2dEvent.cs
 @@ -84,7 +84,9 @@ namespace HutongGames.PlayMaker.Actions
@@ -43361,7 +43361,7 @@ index c41a8194..605e4a23 100644
  		if (netObject == null)
  		{
 diff --git a/Decompiled/Assembly-CSharp/Network.cs b/Decompiled/Assembly-CSharp/Network.cs
-index bddbaeb9..fe8a0412 100644
+index a5d00d41..25b4f4d7 100644
 --- a/Decompiled/Assembly-CSharp/Network.cs
 +++ b/Decompiled/Assembly-CSharp/Network.cs
 @@ -29,6 +29,7 @@ using PegasusUtil;
@@ -43803,7 +43803,7 @@ index aa0f2cda..8ce60c64 100644
  			Option.DEBUG_SHOW_BATTLEGROUND_SKIN_IDS,
  			false
 diff --git a/Decompiled/Assembly-CSharp/OptionsMenu.cs b/Decompiled/Assembly-CSharp/OptionsMenu.cs
-index 810d37fc..18aa3a7d 100644
+index 2af1dd97..db01dcd5 100644
 --- a/Decompiled/Assembly-CSharp/OptionsMenu.cs
 +++ b/Decompiled/Assembly-CSharp/OptionsMenu.cs
 @@ -4,9 +4,10 @@ using Blizzard.T5.Configuration;
@@ -48981,7 +48981,7 @@ index 412e709d..6f1d091d 100644
 +	EOE
  }
 diff --git a/Decompiled/Assembly-CSharp/TB_BaconShop.cs b/Decompiled/Assembly-CSharp/TB_BaconShop.cs
-index 7ecceb55..7d676fc2 100644
+index 5af74fbd..cdbec289 100644
 --- a/Decompiled/Assembly-CSharp/TB_BaconShop.cs
 +++ b/Decompiled/Assembly-CSharp/TB_BaconShop.cs
 @@ -5,6 +5,7 @@ using System.Linq;
@@ -49071,7 +49071,7 @@ index 7ecceb55..7d676fc2 100644
  			int tag = GetFreezeButtonCard().GetEntity().GetTag(GAME_TAG.TAG_SCRIPT_DATA_NUM_1);
  			int tag2 = GetFreezeButtonCard().GetEntity().GetTag(GAME_TAG.TAG_SCRIPT_DATA_NUM_2);
  			tag2--;
-@@ -938,7 +939,7 @@ public class TB_BaconShop : MissionEntity
+@@ -939,7 +940,7 @@ public class TB_BaconShop : MissionEntity
  	protected virtual IEnumerator OnShopPhase(bool waitForBaconBoard)
  	{
  		AchievementManager.Get().UnpauseToastNotifications();
@@ -49080,7 +49080,7 @@ index 7ecceb55..7d676fc2 100644
  		PlayerLeaderboardManager.Get().UpdateLayout();
  		GameState.Get().GetOpposingSidePlayer().UpdateDisplayInfo();
  		UpdateNameBanner();
-@@ -952,7 +953,7 @@ public class TB_BaconShop : MissionEntity
+@@ -953,7 +954,7 @@ public class TB_BaconShop : MissionEntity
  	protected virtual IEnumerator OnCombatPhase()
  	{
  		HideShopTutorials();
@@ -49089,7 +49089,7 @@ index 7ecceb55..7d676fc2 100644
  		GameEntity.Coroutines.StartCoroutine(WaitAndHideActiveSpeechBubble());
  		ShowTechLevelDisplay(shown: false);
  		GameState.Get().GetOpposingSidePlayer().UpdateDisplayInfo();
-@@ -994,13 +995,13 @@ public class TB_BaconShop : MissionEntity
+@@ -995,13 +996,13 @@ public class TB_BaconShop : MissionEntity
  
  	public override string GetVictoryScreenBannerText()
  	{
@@ -49106,7 +49106,7 @@ index 7ecceb55..7d676fc2 100644
  	}
  
  	public override string GetBestNameForPlayer(int playerId)
-@@ -1662,17 +1663,17 @@ public class TB_BaconShop : MissionEntity
+@@ -1663,17 +1664,17 @@ public class TB_BaconShop : MissionEntity
  		return zone.GetFirstCard();
  	}
  
@@ -49127,7 +49127,7 @@ index 7ecceb55..7d676fc2 100644
  	{
  		return GetGameModeButtonBySlot(3);
  	}
-@@ -1734,4 +1735,76 @@ public class TB_BaconShop : MissionEntity
+@@ -1735,4 +1736,76 @@ public class TB_BaconShop : MissionEntity
  			}
  		}
  	}
@@ -49967,7 +49967,7 @@ index c2e385c7..592cc334 100644
 +    }
  }
 diff --git a/Decompiled/Assembly-CSharp/UIBScrollable.cs b/Decompiled/Assembly-CSharp/UIBScrollable.cs
-index d3d8bd54..00633474 100644
+index d7da834a..faabffe4 100644
 --- a/Decompiled/Assembly-CSharp/UIBScrollable.cs
 +++ b/Decompiled/Assembly-CSharp/UIBScrollable.cs
 @@ -198,7 +198,7 @@ public class UIBScrollable : PegUICustomBehavior
