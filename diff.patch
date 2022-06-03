@@ -21417,7 +21417,7 @@ index 00000000..9473d383
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 00000000..8c874e2f
+index 00000000..622e5c44
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -21429,7 +21429,7 @@ index 00000000..8c874e2f
 +    {
 +        public static string HEARTHSTONE_VERSION = "23.4.0.139963";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "33";
++        public static string HEARTHSTONE_ACCESS_VERSION = "34";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -31892,7 +31892,7 @@ index 745be4fe..a04faea7 100644
  
  	private IEnumerator PlayPowerUpSpell()
 diff --git a/Decompiled/Assembly-CSharp/ChatBubbleFrame.cs b/Decompiled/Assembly-CSharp/ChatBubbleFrame.cs
-index 5149e889..393da2eb 100644
+index 5149e889..a936b665 100644
 --- a/Decompiled/Assembly-CSharp/ChatBubbleFrame.cs
 +++ b/Decompiled/Assembly-CSharp/ChatBubbleFrame.cs
 @@ -1,5 +1,6 @@
@@ -31912,7 +31912,7 @@ index 5149e889..393da2eb 100644
  		}
  		else
  		{
-@@ -87,17 +89,38 @@ public class ChatBubbleFrame : MonoBehaviour
+@@ -87,17 +89,40 @@ public class ChatBubbleFrame : MonoBehaviour
  			{
  				m_NameText.TextColor = GameColors.PLAYER_NAME_OFFLINE;
  			}
@@ -31920,17 +31920,17 @@ index 5149e889..393da2eb 100644
 +			m_speakerName = speaker.GetBestName();
 +			m_NameText.Text = m_speakerName;
  		}
--		string message = ChatUtils.GetMessage(m_whisper);
--		if (ChatUtils.TryGetFormattedDeckcodeMessage(message, showHint: false, out var formattedDeckcodeMessage))
-+		m_messageText = ChatUtils.GetMessage(m_whisper);
-+		if (ChatUtils.TryGetFormattedDeckcodeMessage(m_messageText, showHint: false, out m_messageText))
+ 		string message = ChatUtils.GetMessage(m_whisper);
+ 		if (ChatUtils.TryGetFormattedDeckcodeMessage(message, showHint: false, out var formattedDeckcodeMessage))
  		{
 -			m_MessageText.Text = formattedDeckcodeMessage;
++			m_messageText = formattedDeckcodeMessage;
 +			m_MessageText.Text = m_messageText;
  		}
  		else
  		{
 -			m_MessageText.Text = message;
++			m_messageText = message;
 +			m_MessageText.Text = m_messageText;
  		}
  		m_MessageText.Text += " ";
