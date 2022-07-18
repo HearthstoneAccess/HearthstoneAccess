@@ -21417,7 +21417,7 @@ index 00000000..9473d383
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 00000000..c0e6d724
+index 00000000..590dc327
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -21427,9 +21427,9 @@ index 00000000..c0e6d724
 +{
 +    public class HearthstoneAccessConstants
 +    {
-+        public static string HEARTHSTONE_VERSION = "23.6.2.143410";
++        public static string HEARTHSTONE_VERSION = "23.6.2.144772";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "37";
++        public static string HEARTHSTONE_ACCESS_VERSION = "38";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -41976,7 +41976,7 @@ index 1263ae0b..57b68119 100644
  		return value > 0;
  	}
 diff --git a/Decompiled/Assembly-CSharp/GameState.cs b/Decompiled/Assembly-CSharp/GameState.cs
-index b220dfe0..9647918f 100644
+index 8fad6fd3..77c028c5 100644
 --- a/Decompiled/Assembly-CSharp/GameState.cs
 +++ b/Decompiled/Assembly-CSharp/GameState.cs
 @@ -11,6 +11,7 @@ using Blizzard.T5.Core;
@@ -42722,7 +42722,7 @@ index a694892d..f865d23f 100644
  	}
  }
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
-index 3d567e47..c5e5ad3d 100644
+index 79b50979..adad5a68 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/ExceptionReporterControl.cs
 @@ -84,6 +84,37 @@ namespace Hearthstone
@@ -42764,7 +42764,7 @@ index 3d567e47..c5e5ad3d 100644
  		{
  			if (PlatformSettings.IsMobileRuntimeOS && (on ^ m_ANRMonitorOn))
 diff --git a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
-index 928a9273..258b1bd1 100644
+index a8c6853c..2f884257 100644
 --- a/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 +++ b/Decompiled/Assembly-CSharp/Hearthstone/HearthstoneApplication.cs
 @@ -5,6 +5,7 @@ using System.IO;
@@ -42820,7 +42820,7 @@ index 928a9273..258b1bd1 100644
 -			ExceptionReporterControl.Get().ExceptionReportInitialize();
 +			// ExceptionReporterControl.Get().ExceptionReportInitialize(); // Remove so we don't send Blizzard exceptions that may be caused by us
 +			ExceptionReporterControl.Get().ExceptionReportInitializeDebug();
- 			HearthstonePerformance.Initialize(TestType, 2961414.ToString());
+ 			HearthstonePerformance.Initialize(TestType, 2976932.ToString());
  			HearthstonePerformance.Get()?.CaptureAppStartTime();
  			AppLaunchTracker.TrackAppLaunch();
 @@ -232,6 +237,8 @@ namespace Hearthstone
@@ -47346,7 +47346,7 @@ index a8b6dc5d..56ed3580 100644
  		if (netObject == null)
  		{
 diff --git a/Decompiled/Assembly-CSharp/Network.cs b/Decompiled/Assembly-CSharp/Network.cs
-index d7226fd3..a09e2744 100644
+index cba822d9..93a50bc3 100644
 --- a/Decompiled/Assembly-CSharp/Network.cs
 +++ b/Decompiled/Assembly-CSharp/Network.cs
 @@ -31,6 +31,7 @@ using PegasusUtil;
@@ -47788,7 +47788,7 @@ index 9a2939e2..e54978f8 100644
  			Option.DEBUG_SHOW_BATTLEGROUND_SKIN_IDS,
  			false
 diff --git a/Decompiled/Assembly-CSharp/OptionsMenu.cs b/Decompiled/Assembly-CSharp/OptionsMenu.cs
-index e68fbbcf..38374b78 100644
+index e16b049f..1fb4b784 100644
 --- a/Decompiled/Assembly-CSharp/OptionsMenu.cs
 +++ b/Decompiled/Assembly-CSharp/OptionsMenu.cs
 @@ -5,9 +5,10 @@ using Blizzard.T5.Services;
