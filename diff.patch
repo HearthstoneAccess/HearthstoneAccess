@@ -12605,10 +12605,10 @@ index 00000000..040d6fcb
 +}
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleRewardData.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleRewardData.cs
 new file mode 100644
-index 00000000..69c6d17b
+index 00000000..4dc503f2
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleRewardData.cs
-@@ -0,0 +1,234 @@
+@@ -0,0 +1,245 @@
 +﻿using Assets;
 +using System;
 +using System.Collections.Generic;
@@ -12668,13 +12668,18 @@ index 00000000..69c6d17b
 +                 case Reward.Type.ADVENTURE_HERO_POWER:
 +                 case Reward.Type.DECK:
 +                 default:
-+                    var ret = new List<string>();
-+                    ret.Add(LocalizationUtils.Get(LocalizationKey.UI_REWARD_TYPE_UNKNOWN));
-+                    return ret;
++                    return GetLinesForUnknownReward();
 +            }
 +        }
 +
-+        private List<string> GetLinesForForgeTicketReward()
++		private List<string> GetLinesForUnknownReward()
++		{
++			var ret = new List<string>();
++			ret.Add(LocalizationUtils.Get(LocalizationKey.UI_REWARD_TYPE_UNKNOWN));
++			return ret;
++		}
++
++		private List<string> GetLinesForForgeTicketReward()
 +        {
 +            var ret = new List<string>();
 +
@@ -12774,7 +12779,13 @@ index 00000000..69c6d17b
 +            CardRewardData reward = (CardRewardData)RewardData;
 +
 +            EntityDef entityDef = DefLoader.Get().GetEntityDef(reward.CardID);
-+            if (entityDef.IsHeroSkin())
++
++            if (entityDef.GetTag(GAME_TAG.BACON_SKIN) == 1)
++			{
++                // BG Hero skins are marked with RewardType card for some reason (even though a proper RewardType exists for it)
++                return GetLinesForUnknownReward();
++			}
++            else if (entityDef.IsHeroSkin())
 +            {
 +                return GetLinesForUnlockedHero(reward);
 +            }
@@ -21531,7 +21542,7 @@ index 00000000..9473d383
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 00000000..1826f226
+index 00000000..0b09d177
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -21543,7 +21554,7 @@ index 00000000..1826f226
 +    {
 +        public static string HEARTHSTONE_VERSION = "24.2.2.149417";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "41";
++        public static string HEARTHSTONE_ACCESS_VERSION = "42";
 +
 +        public static bool DEV_MODE = false;
 +
