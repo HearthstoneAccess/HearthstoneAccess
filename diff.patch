@@ -14181,7 +14181,7 @@ index 00000000..d7d60b61
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/AccessibleSpeechUtils.cs b/Decompiled/Assembly-CSharp/Accessibility/AccessibleSpeechUtils.cs
 new file mode 100644
-index 00000000..04998620
+index 00000000..fd2ab990
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/AccessibleSpeechUtils.cs
 @@ -0,0 +1,341 @@
@@ -14384,13 +14384,13 @@ index 00000000..04998620
 +                {
 +                    if (idx < orderedNames.Count - 1)
 +                    {
-+                        sb.Append(separator);
++                        sb.Append($"{separator} ");
 +                    }
 +                    else
 +                    {
-+                        sb.Append(finalSeparator);
-+                    }
-+                }
++						sb.Append($" {finalSeparator} ");
++					}
++				}
 +
 +                var curNameCount = nameCounts[name];
 +
@@ -21530,7 +21530,7 @@ index 00000000..9473d383
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 00000000..d92a15ea
+index 00000000..96b771f0
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -21542,7 +21542,7 @@ index 00000000..d92a15ea
 +    {
 +        public static string HEARTHSTONE_VERSION = "24.4.0.150659";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "43";
++        public static string HEARTHSTONE_ACCESS_VERSION = "44";
 +
 +        public static bool DEV_MODE = false;
 +
@@ -36148,7 +36148,7 @@ index be1dd66c..a6cf74ff 100644
 +    #endregion
  }
 diff --git a/Decompiled/Assembly-CSharp/CollectionManager.cs b/Decompiled/Assembly-CSharp/CollectionManager.cs
-index 9403a743..921bc1d3 100644
+index 9403a743..270c7bb9 100644
 --- a/Decompiled/Assembly-CSharp/CollectionManager.cs
 +++ b/Decompiled/Assembly-CSharp/CollectionManager.cs
 @@ -13,6 +13,7 @@ using PegasusLettuce;
@@ -36348,7 +36348,15 @@ index 9403a743..921bc1d3 100644
  		if (!ShouldAccountSeeStandardWild())
  		{
  			return false;
-@@ -3643,6 +3723,7 @@ public class CollectionManager
+@@ -3632,6 +3712,7 @@ public class CollectionManager
+ 		}
+ 		BattlegroundsDataInit();
+ 		LettuceInitImpl();
++		Get().StartInitialMercenaryLoadIfRequired();
+ 		NetCache.Get().RegisterCollectionManager(OnNetCacheReady);
+ 		LoginManager.Get().OnAchievesLoaded += OnAchievesLoaded;
+ 	}
+@@ -3643,6 +3724,7 @@ public class CollectionManager
  		m_collectionLoaded = false;
  		m_duelsSessionInfoLoaded = false;
  		HearthstoneApplication.Get().WillReset -= s_instance.WillReset;
@@ -36356,7 +36364,7 @@ index 9403a743..921bc1d3 100644
  		NetCache.Get().FavoriteBattlegroundsGuideSkinChanged -= s_instance.OnFavoriteBattlegroundsGuideSkinChanged;
  		NetCache.Get().RemoveUpdatedListener(typeof(NetCache.NetCacheDecks), s_instance.NetCache_OnDecksReceived);
  		if (HearthstoneApplication.IsInternal())
-@@ -5958,4 +6039,76 @@ public class CollectionManager
+@@ -5958,4 +6040,76 @@ public class CollectionManager
  			break;
  		}
  	}
