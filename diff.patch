@@ -21530,7 +21530,7 @@ index 00000000..9473d383
 \ No newline at end of file
 diff --git a/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 new file mode 100644
-index 00000000..96b771f0
+index 00000000..fcd43ed0
 --- /dev/null
 +++ b/Decompiled/Assembly-CSharp/Accessibility/HearthstoneAccessConstants.cs
 @@ -0,0 +1,32 @@
@@ -21540,9 +21540,9 @@ index 00000000..96b771f0
 +{
 +    public class HearthstoneAccessConstants
 +    {
-+        public static string HEARTHSTONE_VERSION = "24.4.0.150659";
++        public static string HEARTHSTONE_VERSION = "24.4.3.152904";
 +
-+        public static string HEARTHSTONE_ACCESS_VERSION = "44";
++        public static string HEARTHSTONE_ACCESS_VERSION = "45";
 +
 +        public static bool DEV_MODE = false;
 +
